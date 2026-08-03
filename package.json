@@ -1,0 +1,28 @@
+{
+  "name": "sonde",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "sonde — sent into a runtime to report what is there",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host",
+    "verify": "node tools/verify.mjs",
+    "headless": "node tools/run-headless.mjs",
+    "diff": "node tools/diff-report.mjs",
+    "pair": "node tools/pair-probe.mjs"
+  },
+  "dependencies": {
+    "@parity/product-sdk": "^0.20.0",
+    "@parity/product-sdk-host": "^0.15.0",
+    "@parity/product-sdk-statement-store": "^0.6.3",
+    "@parity/product-sdk-terminal": "^0.7.0",
+    "@parity/truapi": "^0.6.0",
+    "ethers": "^6.13.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "vite": "^5.2.0"
+  }
+}

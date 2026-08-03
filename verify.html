@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>sonde — fail-safe contract verification</title>
+  </head>
+  <body>
+    <!-- Driven headless. src/verify.ts writes its verdict into #verdict, which
+         `google-chrome --headless --dump-dom` then reads back. -->
+    <pre id="verdict">running…</pre>
+    <script type="module" src="/src/verify.ts"></script>
+  </body>
+</html>

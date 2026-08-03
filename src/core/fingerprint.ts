@@ -21,7 +21,7 @@
 
 import { TRUAPI_VERSION, TRUAPI_CODEC_VERSION } from "@parity/truapi";
 import { detectSurface, type SurfaceInfo } from "./surface";
-import { PRODUCT_ID, CLOUD_ENV, SUITE_VERSION } from "../../product.mjs";
+import { PRODUCT_ID, CLOUD_ENV, SUITE_VERSION, SOURCE_URL } from "../../product.mjs";
 
 declare const __SDK_VERSIONS__: Record<string, string>;
 declare const __BUILD_ID__: string;
@@ -35,6 +35,8 @@ export interface Fingerprint {
     buildId: string;
     productId: string;
     cloudEnv: string;
+    /** So a reader can check how any claim in this report was measured. */
+    source: string;
   };
   browser: {
     userAgent: string;
@@ -86,6 +88,7 @@ export async function captureFingerprint(): Promise<Fingerprint> {
       buildId: typeof __BUILD_ID__ === "string" ? __BUILD_ID__ : "dev",
       productId: PRODUCT_ID,
       cloudEnv: CLOUD_ENV,
+      source: SOURCE_URL,
     },
     browser: {
       userAgent: ua,

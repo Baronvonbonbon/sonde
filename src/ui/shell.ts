@@ -66,7 +66,25 @@ export class Shell {
     this.reportBox = el("div");
     this.root.appendChild(this.reportBox);
 
+    this.renderFooter();
     this.renderTallies();
+  }
+
+  private renderFooter(): void {
+    const f = this.fingerprint;
+    const foot = el("div", "foot");
+    foot.innerHTML = `
+      <a href="${esc(f.suite.source)}" target="_blank" rel="noopener noreferrer">${esc(f.suite.source)}</a>
+      <div class="muted">
+        sonde ${esc(f.suite.version)} · build ${esc(f.suite.buildId)} · published as
+        <span class="mono">${esc(f.suite.productId)}.dot</span>
+      </div>
+      <div class="muted">
+        Every probe's source, and the reasoning behind what each result means, is in
+        <span class="mono">src/probes/</span>. If a result here looks wrong, the code that produced
+        it is the thing to check.
+      </div>`;
+    this.root.appendChild(foot);
   }
 
   // -- header --------------------------------------------------------------
@@ -74,8 +92,11 @@ export class Shell {
   private renderHead(): void {
     const f = this.fingerprint;
     const head = el("div", "head");
+    // The source link is prominent by design. This page makes assertions about
+    // someone else's software; a reader who cannot check what was actually
+    // called has been given a rumour, not a report.
     head.innerHTML = `
-      <h1>sonde</h1>
+      <h1>sonde <a class="src" href="${esc(f.suite.source)}" target="_blank" rel="noopener noreferrer">source ↗</a></h1>
       <div class="sub">${this.probes.length} probes · ${SURFACE_LABEL[f.surface.surface]}</div>
       <div class="tallies" data-tallies></div>
       <div class="fp">${esc(fingerprintSummary(f))}

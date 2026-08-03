@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "sonde — sent into a runtime to report what is there",
+  "description": "sonde \u2014 sent into a runtime to report what is there",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
@@ -11,7 +11,9 @@
     "verify": "node tools/verify.mjs",
     "headless": "node tools/run-headless.mjs",
     "diff": "node tools/diff-report.mjs",
-    "pair": "node tools/pair-probe.mjs"
+    "pair": "node tools/pair-probe.mjs",
+    "check-identity": "node tools/check-identity.mjs",
+    "deploy": "node tools/check-identity.mjs $npm_config_domain --env devnet && npx @polkadot-community-foundation/polkadot-app-deploy@latest ./dist $npm_config_domain --env devnet --js-merkle"
   },
   "dependencies": {
     "@parity/product-sdk": "^0.20.0",

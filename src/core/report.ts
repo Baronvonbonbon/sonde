@@ -159,6 +159,7 @@ export function toMarkdown(r: Report): string {
     `| User agent | \`${f.browser.userAgent}\` |`,
     `| Device | ${f.browser.uaData?.model ?? "unknown"} · ${f.browser.uaData?.platform ?? "?"} ${f.browser.uaData?.platformVersion ?? ""} |`,
     `| Suite | ${f.suite.version} (build ${f.suite.buildId}) |`,
+    `| Source | ${f.suite.source} |`,
     `| truapi | ${f.host.truapi} (codec ${f.host.truapiCodec}) |`,
     `| Secure context | ${f.context.isSecureContext} · cross-origin isolated ${f.context.crossOriginIsolated} |`,
     `| Max tier | ${r.tiers.max} |`,
@@ -197,6 +198,17 @@ export function toMarkdown(r: Report): string {
 
   lines.push("", "## Caveats", "");
   for (const c of r.caveats) lines.push(`- ${c}`);
+  lines.push(
+    "",
+    "---",
+    "",
+    `Produced by [sonde](${f.suite.source}) — open \`${f.suite.productId}.dot\` in the Polkadot App`,
+    "to run it yourself, then diff your report against this one:",
+    "",
+    "```bash",
+    "npm run diff -- theirs.json yours.json --md",
+    "```",
+  );
   return lines.join("\n");
 }
 
@@ -284,7 +296,8 @@ export function toGitHubIssue(r: Report, row: ResultRow): string {
     "make reports like this one comparable across releases.",
     "",
     "---",
-    `Produced by sonde ${f.suite.version} (build ${f.suite.buildId}), run \`${r.runId}\`.`,
+    `Produced by [sonde](${f.suite.source}) ${f.suite.version} (build ${f.suite.buildId}), run \`${r.runId}\`.`,
+    `Reproduce: open \`${f.suite.productId}.dot\` in the Polkadot App and run \`${row.id}\`.`,
   ]
     .filter((l) => l !== "")
     .join("\n");

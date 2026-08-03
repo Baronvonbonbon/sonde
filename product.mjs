@@ -1,20 +1,27 @@
 // The one place the published identity is written down.
 //
-// The label is deliberately random. A .dot address is public, and a readable
-// one announces what is being tested and for whom before any answer is in.
-// This says nothing. (Same reasoning as kite's product.mjs — a compatibility
-// report is meant to be shared; who commissioned it is not.)
+// kite used a random 32-character label so that testing a platform's limits did
+// not announce who was testing them or why. sonde deliberately does the
+// opposite. The trade was made knowingly:
+//
+//   lost — anonymity. A readable name announces what is being tested before any
+//          answer is in, and a .dot address is public forever.
+//   won  — citability. This suite is only useful if strangers run it on their
+//          own devices and compare reports. An unmemorable name is one nobody
+//          passes on, and a compatibility matrix nobody re-runs is just an
+//          anecdote with a schema.
+//
+// If you fork this to probe something you would rather not be seen probing,
+// regenerate an anonymous label instead:
+//   python3 -c "import secrets,string;print(''.join(secrets.choice(string.ascii_lowercase) for _ in range(32)))"
 //
 // PRODUCT_ID must equal the DotNS label: the host derives product accounts and
 // the local-storage namespace from it, and `hasBulletinAllowance` /
 // `hasStatementStoreAllowance` are looked up per product. If these two drift
 // apart, the host probes silently exercise an identity that never published
 // anything and report a confident "no".
-//
-// Regenerate with:
-//   python3 -c "import secrets,string;print(''.join(secrets.choice(string.ascii_lowercase) for _ in range(32)))"
 
-export const PRODUCT_ID = "beganmwyxujwkjlxqqixodhpczpoeuqv";
+export const PRODUCT_ID = "caniusethis";
 export const DOT_NAME = `${PRODUCT_ID}.dot`;
 
 // Must equal the --env passed to `pad`. The SDK defaults cloud storage to
@@ -27,6 +34,14 @@ export const CLOUD_ENV = "devnet";
 // Bumped whenever the probe set changes shape. The diff CLI uses this to tell
 // "this probe regressed" from "this probe did not exist in the older report".
 export const SUITE_VERSION = "1.0.0";
+
+// Where the code that produced a report lives.
+//
+// Carried in the UI, in the JSON, and in the markdown, because a compatibility
+// report is an assertion about someone else's software and the only honest way
+// to make one is to let the reader check how it was measured. A probe that says
+// "blocked" without showing what it called is a rumour.
+export const SOURCE_URL = "https://github.com/Baronvonbonbon/sonde";
 
 // ---------------------------------------------------------------------------
 // The T3 fail-safe that is not a UI toggle.

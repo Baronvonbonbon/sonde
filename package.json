@@ -14,7 +14,8 @@
     "pair": "node tools/pair-probe.mjs",
     "check-identity": "node tools/check-identity.mjs",
     "deploy": "node tools/deploy.mjs",
-    "whois": "node tools/whois.mjs"
+    "whois": "node tools/whois.mjs",
+    "deploy-key": "node tools/deploy-key.mjs"
   },
   "dependencies": {
     "@parity/product-sdk": "0.27.0",

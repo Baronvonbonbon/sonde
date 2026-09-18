@@ -32,6 +32,39 @@ before publishing to a label owned by an address `whoami` did not print, rewrite
 label, then runs verify → build → check-identity → leak grep → `pad`. `tools/whois.mjs` is almanac's
 eth_call-only lookup — prefer it to `whoowns.sh`, which races a kill against a real registration.
 
+## 2026-09-18 (night) — publish with a local deploy key; the phone path cannot hold a name
+
+**Supersedes the two "evening" findings below**, which were each half right. The last `caniusethis.dot`
+attempt — pad's product address forced to `0xFF54…` by a module hook — reverted too, and **neither
+`0xFF54…` nor the root had signed it**. Read from the raw extrinsic (Paseo Asset Hub block 13414057),
+the phone signed as a third account: **`5C7mc2S8…EstC` / `0x09ab…19d8`**, whose nonce (4) matches the
+day's included Link-content attempts. pad now derives its product account under
+`product-sdk-keys` 0.4 from a product *subtree* key only the wallet holds, and the wallet never returns
+it — so the account cannot be computed, and it is not the one `0xFF54…` was derived with in August.
+Result: `caniusethis.dot` (owned by `0xFF54…`) and `sondeprobe.dot` (owned by the root) **cannot be
+updated from this phone**. The module hook was removed — it derived the wrong account.
+
+**So sonde now publishes as almanac does: a deploy key on this computer owns the name and signs its
+updates**, and pad runs as a library with one of its pool accounts signing the Bulletin upload. No phone
+step, nothing for a wallet to derive differently next month.
+
+| | |
+|---|---|
+| Key file | `~/.config/sonde/deploy-key` (mode 600, never printed; separate from almanac's so the two projects' names are not tied to one owner) |
+| Address | `5DAXE4qVcgAnpqEdAxNNj68Kmj5aNrGGVaujRVD9YqqmNxAm` / `0xa6d98c2e9eaa9d5bde71cb8763d54011e3a356f6` |
+
+```bash
+npm run deploy-key                              # create the key once; prints the address to fund
+npm run deploy -- <label> --check               # key, balance and name only — nothing signed
+npm run deploy -- <label> --register            # first publish: registers the label to the key (typed back)
+npm run deploy -- <label>                       # every republish after that
+```
+
+`deploy.mjs` refuses a label owned by anyone but the key, refuses to register without `--register`, the
+label typed back and ~12 PAS on the key, and passes `transferToSignedInUser: false` — pad defaults that
+on whenever a login session exists, and it would hand the new name to the phone account, stranding it
+like the other two. **Back the key file up**: it is the only thing that can update the name.
+
 ## 2026-09-18 (evening) — back to `caniusethis.dot`: it was yours all along
 
 **Correction to the two sections below.** `caniusethis.dot` was never owned by another account. Its

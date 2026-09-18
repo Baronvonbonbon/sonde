@@ -12,7 +12,9 @@
 // On 2026-09-11 the chain said almanac01 was "Available to all" for a NoStatus signer and pad refused
 // it as Personhood Lite. The first version of this tool read only the chain, and was wrong.
 //
-// Addresses are the devnet entry in pad 0.16.1's environments.json. They moved in the 2026-09-08
+// Addresses are the devnet entry in pad 0.16.6's environments.json (updated 2026-09-18: the
+// registrar moved; names registered before were migrated, names registered after exist only in
+// the new one, so the old address reported them as unowned). They moved in the 2026-09-08
 // devnet update and can move again: if every label reads as unowned, check them first.
 //
 // Usage:  node tools/whois.mjs [--signer 0xH160] <label> [label…]
@@ -20,8 +22,8 @@
 import { ethers } from "ethers";
 
 const RPC = "https://eth-rpc-testnet.polkadot.io/"; // Paseo Asset Hub, chain id 420420417
-const REGISTRAR = "0x0E05e0E2576DDD1C339d360Aa634fE52CBa7Ee45"; // DOTNS_REGISTRAR — ERC-721, tokenId = namehash(label.dot)
-const POP_RULES = "0xB991Bc0C5Ff4B4c7f3634bfC74e0E20F74D59554";
+const REGISTRAR = "0xc609e0c2DAB4433d55a32FB098Db8788C1956302"; // DOTNS_REGISTRAR — ERC-721, tokenId = namehash(label.dot)
+const POP_RULES = "0xD5Ee34610F06f7FF4668aB4fabE2393B65a43AE7";
 
 const registrar = new ethers.Interface(["function ownerOf(uint256 tokenId) view returns (address)"]);
 const popRules = new ethers.Interface([

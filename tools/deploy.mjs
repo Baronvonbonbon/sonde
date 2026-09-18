@@ -17,6 +17,7 @@
 // Usage:  npm run deploy -- <label> [--register] [--yes-owner]
 //   --register    allow registering an unowned label (permanent, ~10 PAS)
 //   --yes-owner   skip the "is this owner you?" question when the label is already owned
+//   --check       stop after the signer and name checks: nothing is built, uploaded or signed
 
 import { spawnSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
@@ -29,12 +30,20 @@ import { ss58Decode } from "@polkadot-labs/hdkd-helpers";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const ENV = "devnet";
-const PAD = ["--yes", "@polkadot-community-foundation/polkadot-app-deploy@0.16.6"];
+// pad from sonde's own devDependencies (pinned exactly), run with a hook that derives the product
+// account locally — the phone never answers pad's request for it (tools/pad/local-product-key.mjs).
+const PAD_BIN = resolve(root, "node_modules/.bin/pad");
+const PAD_ENV = {
+  ...process.env,
+  NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ""} --import=${resolve(root, "tools/pad/local-product-key.mjs")}`.trim(),
+};
+const pad = (argv, opts = {}) => run(PAD_BIN, argv, { env: PAD_ENV, ...opts });
 
 const args = process.argv.slice(2);
 const label = args.find((a) => !a.startsWith("--"))?.replace(/\.dot$/i, "").toLowerCase();
 const register = args.includes("--register");
 const yesOwner = args.includes("--yes-owner");
+const checkOnly = args.includes("--check");
 
 if (!label) {
   console.error("usage: npm run deploy -- <label> [--register] [--yes-owner]");
@@ -58,13 +67,13 @@ const step = (s) => console.log(`\n── ${s} ${"─".repeat(Math.max(0, 60 - s
 
 // 1 ── the signer ──────────────────────────────────────────────────────────
 step("signer");
-const who = run("npx", [...PAD, "whoami", "--env", ENV], { input: "" });
+const who = pad(["whoami", "--env", ENV], { input: "" });
 const whoText = `${who.stdout}${who.stderr}`.trim();
 if (/not logged in/i.test(whoText)) {
   die(
     "pad is not signed in, so a first publish could not be handed to your account and a republish\n" +
       "could not be signed. Sign in with your phone first, then run this again:\n\n" +
-      `  npx ${PAD.slice(1).join(" ")} login --env ${ENV}`,
+      `  npx pad login --env ${ENV}   (from this directory)`,
   );
 }
 console.log(whoText.split("\n").map((l) => `  ${l}`).join("\n"));
@@ -84,6 +93,8 @@ if (rootSs58) {
   rootH160 = h160(rootPk);
   signer = h160(deriveProductAccountPublicKey(rootPk, "polkadot-app-deploy", 0));
   console.log(`  → the phone signs as ${signer} (pad product account #0, derived from the root)`);
+  const shown = whoText.match(/H160 \(EVM\):\s*(0x[0-9a-fA-F]{40})/)?.[1]?.toLowerCase();
+  if (shown && shown !== signer) die(`pad reports ${shown} as the product account, but it derives to ${signer} — stopping.`);
 }
 
 // pad compares a name's owner with the account it believes the phone signs as, and with the product
@@ -96,8 +107,8 @@ if (productUnresolved) {
       "it would compare ownership against your root — refusing names the phone's account owns, and\n" +
       "accepting names whose update then reverts. Get the key to resolve, then run this again:\n\n" +
       "  1. Open the Polkadot app on the phone and keep it in the foreground.\n" +
-      `  2. npx ${PAD.slice(1).join(" ")} whoami --env ${ENV}   — look for a product address.\n` +
-      `  3. If it is still unresolved: npx ${PAD.slice(1).join(" ")} logout --env ${ENV}, then login again.\n\n` +
+      `  2. npx pad whoami --env ${ENV}   — look for a product address.\n` +
+      `  3. If it is still unresolved: npx pad logout --env ${ENV}, then login again.\n\n` +
       (signer ? `The product address it should show is ${signer}.` : ""),
   );
 }
@@ -144,6 +155,11 @@ if (!owner || owner === "none") {
   if (!(await ask("  Is that address your signed-in account? [y/N] "))) die("stopped — pick another label");
 }
 
+if (checkOnly) {
+  console.log("\n--check: signer and name are fine; nothing built, uploaded or signed.");
+  process.exit(0);
+}
+
 // 3 ── PRODUCT_ID ─────────────────────────────────────────────────────────
 step("PRODUCT_ID");
 const productPath = resolve(root, "product.mjs");
@@ -180,7 +196,7 @@ console.log(
   "  pad may ask you to approve on your phone and then press Y. Approve FIRST, then press Y —\n" +
     "  pressing Y early makes pad collect a signature that does not exist yet (DEPLOY.md).\n",
 );
-const pub = run("npx", [...PAD, "./dist", `${label}.dot`, "--env", ENV, "--js-merkle"], { stdio: "inherit" });
+const pub = pad(["./dist", `${label}.dot`, "--env", ENV, "--js-merkle"], { stdio: "inherit" });
 if (pub.status !== 0) die("pad failed — uploads are incremental, so re-running is cheap");
 console.log(
   `\nPublished. Open ${label}.dot in the Polkadot app, and record the CID and transactions in DEPLOY.md.\n` +

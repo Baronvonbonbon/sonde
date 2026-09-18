@@ -49,6 +49,15 @@ and the root's nonce is 0. Both pinned-SDK uploads finalised on Bulletin
 (`bafybeifaisnvfmhclueddj2bfevsup6exvrm6icdz5mrymruffe5pj4tnm`, then
 `bafybeiepri3fufexoygywerz3qvttsau6yl44vf5qrlnbjpkmogej55yvm`); neither is linked.
 
+**Why the key never resolves, and the workaround.** pad asks the wallet for the product *subtree*
+key and derives the account from it; the Polkadot app on the phone never answers that request (25 s
+timeout, no prompt, every time), though it answers signing requests. The same account derives from
+the root's public key alone. `tools/pad/local-product-key.mjs` is a Node module hook, loaded through
+`NODE_OPTIONS` so pad's relaunches inherit it, that swaps pad's `deriveProductPublicKey` for that local
+derivation — signing is untouched and still goes to the phone. `deploy.mjs` runs pad from sonde's
+devDependencies (pinned 0.16.6) with the hook, and stops if pad's product address ever disagrees with
+its own derivation. `npm run deploy -- <label> --check` runs the signer and name checks only.
+
 **So sonde publishes to `caniusethis.dot` again**: `npm run deploy -- caniusethis`. `sondeprobe.dot`
 stays registered to the root and pointed at the codec-2 build of 15:45 UTC until something can sign as
 the root.

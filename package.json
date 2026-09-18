@@ -27,6 +27,7 @@
     "ethers": "^6.13.0"
   },
   "devDependencies": {
+    "@polkadot-community-foundation/polkadot-app-deploy": "0.16.6",
     "typescript": "^5.4.0",
     "vite": "^5.2.0"
   }

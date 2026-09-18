@@ -32,6 +32,32 @@ before publishing to a label owned by an address `whoami` did not print, rewrite
 label, then runs verify → build → check-identity → leak grep → `pad`. `tools/whois.mjs` is almanac's
 eth_call-only lookup — prefer it to `whoowns.sh`, which races a kill against a real registration.
 
+## 2026-09-18 (evening) — back to `caniusethis.dot`: it was yours all along
+
+**Correction to the two sections below.** `caniusethis.dot` was never owned by another account. Its
+owner, `0xFF54…333f`, is **pad's product account #0** (productId `polkadot-app-deploy`, index 0)
+derived from the signed-in root `5DoMJ…TLT43` — the account the phone actually signs as (82
+transactions, 5000 PAS). pad's `whoami` printed the *root* (`0xF4f4…fCbB`) because the wallet never
+returned the product key within 25 s ("Product address: unresolved"), and that display is what made
+the name look foreign.
+
+The same fallback stranded `sondeprobe.dot`: its first publish handed the name to the root, which the
+phone never signs as, so both republishes reverted at *Link content* with `Revive.ContractReverted`.
+Measured, not inferred: from `0xFF54…`, `setContenthash` simulates **successfully on
+`caniusethis.dot`** and **reverts on `sondeprobe.dot`**; from the root it succeeds on `sondeprobe.dot`,
+and the root's nonce is 0. Both pinned-SDK uploads finalised on Bulletin
+(`bafybeifaisnvfmhclueddj2bfevsup6exvrm6icdz5mrymruffe5pj4tnm`, then
+`bafybeiepri3fufexoygywerz3qvttsau6yl44vf5qrlnbjpkmogej55yvm`); neither is linked.
+
+**So sonde publishes to `caniusethis.dot` again**: `npm run deploy -- caniusethis`. `sondeprobe.dot`
+stays registered to the root and pointed at the codec-2 build of 15:45 UTC until something can sign as
+the root.
+
+`tools/deploy.mjs` now derives the signing account from the root rather than trusting pad's display: it
+accepts a label owned by that product account, refuses one owned by the root (it would revert), and
+refuses `--register` while whoami says the product address is unresolved (pad would hand the new name
+to the root).
+
 ## 2026-09-18 — `sondeprobe.dot`, and why the SDK is pinned back
 
 `sondeprobe.dot` was registered and published on 2026-09-18 by `npm run deploy -- sondeprobe

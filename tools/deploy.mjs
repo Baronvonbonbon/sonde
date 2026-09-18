@@ -86,6 +86,22 @@ if (rootSs58) {
   console.log(`  → the phone signs as ${signer} (pad product account #0, derived from the root)`);
 }
 
+// pad compares a name's owner with the account it believes the phone signs as, and with the product
+// key unresolved that belief is the root: it then refuses a name the real signer owns ("already owned
+// by 0xff54…"), and accepts one the root owns whose update then reverts. Neither can publish, so stop
+// before building and uploading anything.
+if (productUnresolved) {
+  die(
+    "pad could not get your product account from the wallet (\"Product address: unresolved\"), so\n" +
+      "it would compare ownership against your root — refusing names the phone's account owns, and\n" +
+      "accepting names whose update then reverts. Get the key to resolve, then run this again:\n\n" +
+      "  1. Open the Polkadot app on the phone and keep it in the foreground.\n" +
+      `  2. npx ${PAD.slice(1).join(" ")} whoami --env ${ENV}   — look for a product address.\n` +
+      `  3. If it is still unresolved: npx ${PAD.slice(1).join(" ")} logout --env ${ENV}, then login again.\n\n` +
+      (signer ? `The product address it should show is ${signer}.` : ""),
+  );
+}
+
 // 2 ── the name ────────────────────────────────────────────────────────────
 step(`${label}.dot`);
 const whois = run("node", ["tools/whois.mjs", label]);

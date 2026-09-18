@@ -14,6 +14,24 @@ testing them. `sonde` deliberately does the opposite: this suite is only useful 
 on their own devices and compare reports, and an unmemorable name is one nobody passes on. The
 anonymity was traded for citability, knowingly.
 
+## 2026-09-18 — moving off `caniusethis.dot`
+
+`caniusethis.dot` belongs to `0xFF54…333f` (the owner above), which is not the account `pad` now signs
+with, so the SDK-bumped build (product-sdk 0.29, truapi 0.17) cannot be linked there. Publish under a
+new label with the guarded script:
+
+```bash
+npx @polkadot-community-foundation/polkadot-app-deploy@0.16.6 login --env devnet   # phone QR, once
+npm run whois -- <label>                        # read-only: owner, pad's rule, price
+npm run deploy -- <label> --register            # first publish of an unowned label
+npm run deploy -- <label>                       # every republish after that
+```
+
+`tools/deploy.mjs` shows the signed-in account, refuses an unowned label without `--register`, asks
+before publishing to a label owned by an address `whoami` did not print, rewrites `PRODUCT_ID` to the
+label, then runs verify → build → check-identity → leak grep → `pad`. `tools/whois.mjs` is almanac's
+eth_call-only lookup — prefer it to `whoowns.sh`, which races a kill against a real registration.
+
 ## Deployment record
 
 ### 2026-08-03 — initial publish

@@ -21,7 +21,7 @@
 // apart, the host probes silently exercise an identity that never published
 // anything and report a confident "no".
 
-export const PRODUCT_ID = "caniusethis";
+export const PRODUCT_ID = "sondeprobe";
 export const DOT_NAME = `${PRODUCT_ID}.dot`;
 
 // Must equal the --env passed to `pad`. The SDK defaults cloud storage to

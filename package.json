@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "sonde \u2014 sent into a runtime to report what is there",
+  "description": "sonde — sent into a runtime to report what is there",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
@@ -17,11 +17,11 @@
     "whois": "node tools/whois.mjs"
   },
   "dependencies": {
-    "@parity/product-sdk": "^0.29.0",
-    "@parity/product-sdk-host": "^0.21.0",
-    "@parity/product-sdk-statement-store": "^0.6.11",
-    "@parity/product-sdk-terminal": "^0.9.1",
-    "@parity/truapi": "^0.17.0",
+    "@parity/product-sdk": "0.27.0",
+    "@parity/product-sdk-host": "0.19.1",
+    "@parity/product-sdk-statement-store": "0.6.9",
+    "@parity/product-sdk-terminal": "0.8.2",
+    "@parity/truapi": "0.13.1",
     "ethers": "^6.13.0"
   },
   "devDependencies": {

@@ -32,6 +32,30 @@ before publishing to a label owned by an address `whoami` did not print, rewrite
 label, then runs verify → build → check-identity → leak grep → `pad`. `tools/whois.mjs` is almanac's
 eth_call-only lookup — prefer it to `whoowns.sh`, which races a kill against a real registration.
 
+## 2026-09-18 — `sondeprobe.dot`, and why the SDK is pinned back
+
+`sondeprobe.dot` was registered and published on 2026-09-18 by `npm run deploy -- sondeprobe
+--register` (CID and transactions not recorded here — add them from the deploy output). Its first
+run on a Pixel 10 Pro XL (run `9610281f…`, 16:17 UTC) failed **every host probe** at the handshake:
+
+```
+TrUAPI handshake timed out after 10000ms; the host did not answer on wire codec 2
+```
+
+`@parity/truapi` changed its wire codec from **1 to 2 in 0.16.0** (2026-09-14). `product-sdk-host`
+0.20.0 and 0.21.0 depend on it; **0.19.1 is the last release on codec 1** (truapi 0.13.1), and it is
+what almanac's probe used on the same phone that week, with every host call answered. The Polkadot
+app on that phone speaks codec 1 only — Parity published the SDK ahead of an app that can answer it.
+
+So the dependencies are pinned **exactly** (`--save-exact`) to the codec-1 set: `product-sdk`
+0.27.0, `-host` 0.19.1, `truapi` 0.13.1, `-statement-store` 0.6.9, `-terminal` 0.8.2. **Do not bump
+them until an app release answers codec 2** — re-run `host.system.handshake` after any bump; a
+timeout there means every host probe will skip. This build needs republishing:
+`npm run deploy -- sondeprobe`.
+
+The web half of that run still stands: `web.sensors.geolocation` came back `host-callback-missing`
+(denied, permission still `prompt`) — issue #7 is unchanged on the September app.
+
 ## Deployment record
 
 ### 2026-08-03 — initial publish

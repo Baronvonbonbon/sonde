@@ -15,8 +15,11 @@ const CHROME =
 const PORT = process.env.PORT ?? "5178";
 const URL = `http://localhost:${PORT}/verify.html`;
 
+// In its own process group: `npx` runs vite as a child of its own, and signalling npx alone left
+// vite holding the port after verify exited — the next run then failed "Port 5178 is already in use".
 const vite = spawn("npx", ["vite", "--port", PORT, "--strictPort", "--host", "127.0.0.1"], {
   stdio: ["ignore", "pipe", "pipe"],
+  detached: true,
 });
 
 let viteOut = "";
@@ -25,7 +28,7 @@ vite.stderr.on("data", (d) => (viteOut += d));
 
 const stop = () => {
   try {
-    vite.kill("SIGTERM");
+    process.kill(-vite.pid, "SIGTERM"); // the whole group: npx and the vite under it
   } catch {
     /* already gone */
   }

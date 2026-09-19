@@ -14,6 +14,14 @@ testing them. `sonde` deliberately does the opposite: this suite is only useful 
 on their own devices and compare reports, and an unmemorable name is one nobody passes on. The
 anonymity was traded for citability, knowingly.
 
+## 2026-09-19 (afternoon) — limit probes, crash-safe
+
+Published by the deploy key from `5738515`: CID
+`bafybeidcwaimsbvlq4s5blnwbrzaat5yduk5z5epjmsfxv4ojbqzlvz36q`, contenthash transaction
+`0x55d0a35144208885319025d744ebf6e196e66945d437543e418b7901fdfeaa8d` (Paseo Asset Hub block
+13443974). Carries the 18 limit probes; host.limits.bridgePayload stops at 4 MiB after its 16 MiB
+step killed the page, and the storage-ceiling probe remembers the size that killed it.
+
 ## 2026-09-19 — `sondeprobes.dot`, the first run on it, and three probe bugs
 
 Registered to the deploy key and published with `npm run deploy -- sondeprobes --register` (build

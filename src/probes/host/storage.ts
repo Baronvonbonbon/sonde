@@ -8,6 +8,8 @@
 
 import {
   requestResourceAllocation,
+  requestPermission,
+  getPreimageManager,
   getStatementStore,
   createProofAuthorized,
   formatHostError,
@@ -231,6 +233,11 @@ const upload = host({
               "Either the write is sponsored by the slot account and never needed a tap and is",
               "hanging earlier, or it never reaches the signing path at all. Either way it",
               "should reject rather than stall.",
+              "",
+              "Known since almanac P6 (2026-09-14): cloudStorage.upload signs with product account #0,",
+              "which holds no Bulletin authorization, so it is refused (Invalid: Payment). The",
+              "allowance lands on a slot account only the host can sign with — host.preimage.submit",
+              "tests that route.",
             ),
             diagnosis: "allowance-missing",
           }
@@ -242,6 +249,58 @@ const upload = host({
       `Stored ${kb(payload.length)}.`,
       lines(...log, pad("cid", ctx.shared.cid), "", "NOTE: ~2-week TTL. Not renewing is the expiry."),
     );
+  },
+});
+
+/**
+ * The upload route that works: the host's preimage manager, paid from the slot account
+ * that BulletinAllowance funds (almanac P6b, 2026-09-16). Added 2026-09-19 — until then
+ * sonde only tested cloudStorage.upload, the route that cannot work, so a Product author
+ * reading a sonde report had no evidence the platform can store at all.
+ */
+const preimageSubmit = host({
+  id: "host.preimage.submit",
+  title: "Preimage submit — upload through the host, then read it back",
+  why: "cloudStorage.upload signs with an account that holds no Bulletin authorization. The host's preimage manager signs with the slot account the allowance funds. This is the storage path a Product can actually use; the lookup afterwards proves the bytes landed.",
+  tier: TIER.SPEND,
+  cost: "Stores ~64 bytes on Bulletin from this Product's allowance (one of ~10 transactions a claim). Publicly readable by hash for ~2 weeks.",
+  needs: ["host.cloud.allowance"],
+  timeoutMs: 180_000,
+  async run(ctx) {
+    const log: string[] = [];
+    const permission = await requestPermission({ tag: "PreimageSubmit", value: undefined });
+    if (!permission.ok) return wrong(`PreimageSubmit permission errored: ${formatHostError(permission.error)}`);
+    if (!permission.value) return { status: "blocked", detail: "PreimageSubmit was declined.", diagnosis: "os-denied" };
+    const manager = await getPreimageManager();
+    if (!manager) return unsupported("getPreimageManager() returned null.");
+
+    // Random bytes, so every run stores something new and the lookup cannot be answered from an earlier run.
+    const bytes = crypto.getRandomValues(new Uint8Array(64));
+    const [key, putMs] = await ctx.timed(() => manager.submit(bytes));
+    log.push(pad("submit", `${putMs} ms → ${String(key).slice(0, 18)}…`));
+
+    const back = await new Promise<{ bytes: Uint8Array | null; ms: number }>((resolve) => {
+      const t0 = performance.now();
+      let sub: { unsubscribe(): void } | undefined;
+      const done = (b: Uint8Array | null) => {
+        clearTimeout(timer);
+        try {
+          sub?.unsubscribe();
+        } catch {
+          /* already gone */
+        }
+        resolve({ bytes: b, ms: Math.round(performance.now() - t0) });
+      };
+      const timer = setTimeout(() => done(null), 30_000);
+      sub = manager.lookup(key as `0x${string}`, (b) => b && done(b));
+      ctx.cleanup.add("preimage-submit-lookup", () => sub?.unsubscribe());
+    });
+    if (!back.bytes) return wrong("Stored, but the lookup of the returned key never answered in 30 s.", lines(...log));
+    const same = back.bytes.length === bytes.length && back.bytes.every((b, i) => b === bytes[i]);
+    log.push(pad("lookup", `${back.ms} ms, ${back.bytes.length} bytes, ${same ? "identical" : "DIFFERENT"}`));
+    return same
+      ? ok(`Stored 64 B in ${putMs} ms and read it back in ${back.ms} ms, byte for byte.`, lines(...log))
+      : wrong("The lookup returned different bytes from those stored.", lines(...log));
   },
 });
 
@@ -398,5 +457,6 @@ export const CLOUD_PROBES: Probe[] = [
   allowance,
   upload,
   roundTrip,
+  preimageSubmit,
   statementSubmit,
 ];

@@ -40,7 +40,7 @@ export interface Fingerprint {
   };
   browser: {
     userAgent: string;
-    /** Chromium version parsed from the UA. The app-version proxy. */
+    /** Chromium version parsed from the UA — on Android, the system WebView, not the app. */
     chromium: string | null;
     isWebView: boolean;
     /** navigator.userAgentData high-entropy values. Absent on non-Chromium. */
@@ -121,7 +121,7 @@ export async function captureFingerprint(): Promise<Fingerprint> {
       appVersion: null,
       appVersionSource:
         "NOT AVAILABLE — no truapi namespace exposes an app version. " +
-        "The Chromium version below is the closest proxy, since the app ships a bundled engine.",
+        "The Chromium version below is the system WebView on Android (updated separately from the app), so it does not identify the app build.",
     },
     capturedAt: new Date().toISOString(),
   };

@@ -108,7 +108,8 @@ export function buildReport(args: {
 function buildCaveats(rows: ResultRow[], maxTier: number): string[] {
   const out: string[] = [
     "No Polkadot App version is recorded because no host API exposes one. The Chromium " +
-      "version is a proxy: the app ships a bundled engine, so it moves with app releases.",
+      "version is NOT a proxy for it on Android: the `wv` user agent is the system WebView, " +
+      "which the Play Store updates separately from the app.",
     "A `timeout` means the call never settled. The suite abandons the promise but cannot " +
       "cancel the underlying platform call — a hung call may still be running.",
   ];
@@ -155,7 +156,7 @@ export function toMarkdown(r: Report): string {
     `| Run | \`${r.runId}\` |`,
     `| When | ${r.finishedAt} |`,
     `| Surface | ${f.surface.surface} |`,
-    `| App version | **not exposed by any host API** (Chromium ${f.browser.chromium ?? "?"} as proxy) |`,
+    `| App version | **not exposed by any host API** (system WebView: Chromium ${f.browser.chromium ?? "?"}) |`,
     `| User agent | \`${f.browser.userAgent}\` |`,
     `| Device | ${f.browser.uaData?.model ?? "unknown"} · ${f.browser.uaData?.platform ?? "?"} ${f.browser.uaData?.platformVersion ?? ""} |`,
     `| Suite | ${f.suite.version} (build ${f.suite.buildId}) |`,

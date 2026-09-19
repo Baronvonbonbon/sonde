@@ -44,7 +44,7 @@ const sizeOf = (n: number) => (n >= MiB ? `${n / MiB} MiB` : `${n / 1024} KiB`);
 const bridgePayload = host({
   id: "host.limits.bridgePayload",
   title: "Largest message the host accepts",
-  why: "Every host call is a message across the WebView bridge. Writing a growing value to host local storage (a scratch key, cleared afterwards) finds the largest single message the bridge carries — and whether going over it rejects or hangs.",
+  why: "Every host call is a message across the WebView bridge. Writing a growing value to host local storage (a scratch key, cleared afterwards), up to 4 MiB, checks the sizes a Product can rely on and how long they take. Larger values can take the page down, so they are left to the opt-in storage-ceiling probe.",
   tier: TIER.INVOKE,
   needs: ["host.localStorage.roundTrip"],
   timeoutMs: 180_000,
@@ -58,8 +58,11 @@ const bridgePayload = host({
     ctx.cleanup.add("bridge-scratch", () => store.clear(key).catch(() => {}));
     const rows: string[] = [];
     let largest = 0;
-    let failure = "none up to 16 MiB";
-    for (const n of [1024, 64 * 1024, MiB, 4 * MiB, 16 * MiB]) {
+    // Stops at 4 MiB. A 16 MiB step was refused cleanly once (12:55) and killed the page on
+    // later runs (2026-09-19); an 8 MiB write killed it too. Sizes above 4 MiB belong to the
+    // opt-in host.limits.localStorageCeiling, which remembers a crash and stops short of it.
+    let failure = "not tried above 4 MiB (larger values can kill the page — see host.limits.localStorageCeiling)";
+    for (const n of [1024, 64 * 1024, MiB, 2 * MiB, 4 * MiB]) {
       const bytes = random(n);
       let put;
       try {

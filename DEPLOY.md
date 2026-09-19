@@ -14,6 +14,11 @@ testing them. `sonde` deliberately does the opposite: this suite is only useful 
 on their own devices and compare reports, and an unmemorable name is one nobody passes on. The
 anonymity was traded for citability, knowingly.
 
+## 2026-09-19 (evening) — gas allowance and AutoSigning probes
+
+Published from `c96c5f7`: build `2026-09-19T15:15:07.404Z`, CID
+`bafybeidmwn73cb326y4bhlxhgus4ar4hsdmuaji6kl4opezajlalcw3shi`.
+
 ## 2026-09-19 (later) — chain identified by isChainSupported
 
 Published from `89bab46`: build `2026-09-19T14:10:55.287Z`, CID

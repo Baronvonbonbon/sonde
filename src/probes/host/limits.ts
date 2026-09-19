@@ -36,7 +36,7 @@ const random = (n: number) => {
   for (let i = 0; i < n; i += 65_536) crypto.getRandomValues(out.subarray(i, Math.min(n, i + 65_536)));
   return out;
 };
-const errOf = (e: unknown) => (e instanceof Error ? e.message : JSON.stringify(e) ?? String(e)).slice(0, 160);
+const errOf = (e: unknown) => (e instanceof Error ? e.message : JSON.stringify(e) ?? String(e)).slice(0, 220);
 const sizeOf = (n: number) => (n >= MiB ? `${n / MiB} MiB` : `${n / 1024} KiB`);
 
 // -- the host connection itself ------------------------------------------------
@@ -44,32 +44,50 @@ const sizeOf = (n: number) => (n >= MiB ? `${n / MiB} MiB` : `${n / 1024} KiB`);
 const bridgePayload = host({
   id: "host.limits.bridgePayload",
   title: "Largest message the host accepts",
-  why: "Every host call is a message across the WebView bridge. deriveEntropy takes arbitrary input and stores nothing, so growing its input finds the bridge's size limit — and whether going over it rejects or hangs.",
+  why: "Every host call is a message across the WebView bridge. Writing a growing value to host local storage (a scratch key, cleared afterwards) finds the largest single message the bridge carries — and whether going over it rejects or hangs.",
   tier: TIER.INVOKE,
-  needs: ["host.system.handshake"],
-  timeoutMs: 150_000,
+  needs: ["host.localStorage.roundTrip"],
+  timeoutMs: 180_000,
   async run(ctx) {
+    // *Corrected 2026-09-19:* this grew the input to deriveEntropy, which accepts at most
+    // 32 bytes ("Key must be at most 32 bytes"), so it measured that call's argument check,
+    // not the bridge.
+    const store = await getHostLocalStorage();
+    if (!store) return unsupported("getHostLocalStorage() returned null.");
+    const key = "sonde.limits.bridge";
+    ctx.cleanup.add("bridge-scratch", () => store.clear(key).catch(() => {}));
     const rows: string[] = [];
     let largest = 0;
     let failure = "none up to 16 MiB";
     for (const n of [1024, 64 * 1024, MiB, 4 * MiB, 16 * MiB]) {
-      const w = await within(ctx.signal, 25_000, sizeOf(n), () => deriveEntropy(random(n)));
-      if (!w.ok) {
-        rows.push(pad(sizeOf(n), `no answer in ${w.ms} ms`));
+      const bytes = random(n);
+      let put;
+      try {
+        put = await within(ctx.signal, 45_000, sizeOf(n), () => store.writeBytes(key, bytes));
+      } catch (e) {
+        rows.push(pad(sizeOf(n), `refused — ${errOf(e)}`));
+        failure = `refused at ${sizeOf(n)}`;
+        break;
+      }
+      if (!put.ok) {
+        rows.push(pad(sizeOf(n), `no answer in ${put.ms} ms`));
         failure = `hang at ${sizeOf(n)}`;
         break;
       }
-      if (!w.value.ok) {
-        rows.push(pad(sizeOf(n), `error in ${w.ms} ms — ${formatHostError(w.value.error)}`));
-        failure = `error at ${sizeOf(n)}`;
+      const get = await within(ctx.signal, 45_000, "read", () => store.readBytes(key));
+      const back = get.ok ? get.value : undefined;
+      const intact = !!back && back.length === n && back[n - 1] === bytes[n - 1];
+      rows.push(pad(sizeOf(n), `write ${put.ms} ms, read ${get.ms} ms, ${intact ? "intact" : "NOT intact"}`));
+      if (!intact) {
+        failure = `read-back fails at ${sizeOf(n)}`;
         break;
       }
-      rows.push(pad(sizeOf(n), `ok in ${w.ms} ms`));
       largest = n;
     }
+    await store.clear(key).catch(() => {});
     const measures = { largestOkBytes: largest, beyond: failure };
-    if (!largest) return { ...wrong("Even a 1 KiB input failed.", lines(...rows)), measures };
-    return { ...ok(`Largest input accepted: ${sizeOf(largest)}. Beyond it: ${failure}.`, lines(...rows)), measures };
+    if (!largest) return { ...wrong("Even a 1 KiB value failed.", lines(...rows)), measures };
+    return { ...ok(`Largest message carried both ways: ${sizeOf(largest)}. Beyond it: ${failure}.`, lines(...rows)), measures };
   },
 });
 
@@ -226,6 +244,9 @@ const notificationLimits = host({
 // -- Bulletin -------------------------------------------------------------------
 
 async function preimages(): Promise<PreimageManager> {
+  // Asked here, not through `needs`: host.cloud.allowance is a gesture probe and runs after
+  // every unattended one, so a `needs` on it always read "has not run yet" (2026-09-19).
+  await requestResourceAllocation([{ tag: "BulletinAllowance", value: undefined } as never]).catch(() => {});
   const p = await requestPermission({ tag: "PreimageSubmit", value: undefined });
   if (!p.ok || !p.value) throw new Error(p.ok ? "PreimageSubmit declined" : formatHostError(p.error));
   const m = await getPreimageManager();
@@ -303,7 +324,7 @@ const preimageSize = host({
   tier: TIER.SPEND,
   optIn: "spends-quota",
   cost: "Requests up to three Bulletin allowance claims and stores up to 9 MiB of random bytes on Bulletin, readable by hash for ~2 weeks.",
-  needs: ["host.cloud.allowance"],
+  needs: ["host.system.handshake"],
   timeoutMs: 900_000,
   async run(ctx) {
     const m = await preimages();
@@ -345,7 +366,7 @@ const bulletinQuota = host({
   tier: TIER.SPEND,
   optIn: "spends-quota",
   cost: "Uses up every remaining Bulletin upload of this product's current claims (up to 80 uploads of 32 bytes), then requests one more claim. sondeprobes.dot may be unable to store for up to ~14 days.",
-  needs: ["host.cloud.allowance"],
+  needs: ["host.system.handshake"],
   timeoutMs: 1_200_000,
   async run(ctx) {
     const m = await preimages();
@@ -392,7 +413,20 @@ let sequence = 0;
 /** (unix seconds << 32) | sequence — a later value is a newer statement. */
 const expiryIn = (seconds: number) => (BigInt(Math.floor(Date.now() / 1000) + seconds) << 32n) | BigInt(++sequence & 0xffff);
 
-async function submit(statement: { topics: string[]; channel?: string; expiry: bigint; data: string }) {
+/**
+ * AccountFull's minExpiry is the shortest expiry the account holds. When it is i64::MAX the
+ * account holds statements submitted with no expiry, which the store keeps as the maximum —
+ * and a statement is refused if it would expire sooner than everything held. Found
+ * 2026-09-19: sonde's own host.statement.submit had been submitting with no expiry on a
+ * fresh topic every run, filling this product's account with statements that never expire.
+ */
+const NO_EXPIRY_HELD = "9223372036854775807";
+const explain = (msg: string) =>
+  msg.includes(`minExpiry=${NO_EXPIRY_HELD}`)
+    ? `${msg} — the account is full of statements with NO expiry (stored as the maximum), so any statement with a finite expiry is refused`
+    : msg;
+
+async function submit(statement: { topics: string[]; channel?: string; expiry?: bigint; data: string }) {
   const store = await getStatementStore();
   if (!store) throw new Error("getStatementStore() returned null");
   const proof = await createProofAuthorized(statement as never);
@@ -405,7 +439,7 @@ async function trySubmit(ctx: Ctx, statement: Parameters<typeof submit>[0]): Pro
     const w = await within(ctx.signal, 30_000, "submit", () => submit(statement));
     return w.ok ? "accepted" : `no answer in ${w.ms} ms`;
   } catch (e) {
-    return `refused — ${errOf(e)}`;
+    return `refused — ${explain(errOf(e))}`;
   }
 }
 
@@ -416,16 +450,17 @@ const statementSize = host({
   title: "Statement Store — exact size limit",
   why: "The SDK says 512 bytes a statement. This submits 256, 512, 513 and 1024 bytes on one channel (each replacing the last, so it holds one slot) and records what is refused and how.",
   tier: TIER.SPEND,
-  cost: "Submits up to four statements on one channel, each replacing the previous; one slot is held for an hour.",
+  cost: "Submits up to four statements on sonde's one limits channel, each replacing the previous. They carry no expiry, so the slot stays held.",
   needs: ["host.statement.submit"],
   timeoutMs: 180_000,
   async run(ctx) {
-    const channel = await channelOf("limits.size");
+    // No expiry: while this account holds no-expiry statements, nothing finite is accepted.
+    const channel = await channelOf("limits");
     const rows: string[] = [];
     let largest = 0;
     let beyond = "none up to 1024 B";
     for (const n of [256, 512, 513, 1024]) {
-      const r = await trySubmit(ctx, { topics: [topicNow()], channel, expiry: expiryIn(3600), data: toHex(random(n)) });
+      const r = await trySubmit(ctx, { topics: [topicNow()], channel, data: toHex(random(n)) });
       rows.push(pad(`${n} B`, r));
       if (r !== "accepted") {
         beyond = `${n} B: ${r}`;
@@ -445,7 +480,7 @@ const statementLatency = host({
   title: "Statement Store — time from submit to delivery",
   why: "Signalling a WebRTC call over statements is only as quick as a statement reaches a subscriber. This subscribes to a fresh topic, submits on it, and times the delivery back to the same phone — the lower bound for two phones.",
   tier: TIER.SPEND,
-  cost: "Submits one small statement on a channel it reuses, held for an hour.",
+  cost: "Submits one small statement on sonde's one limits channel, replacing what is there. No expiry, so the slot stays held.",
   needs: ["host.statement.submit"],
   timeoutMs: 120_000,
   async run(ctx) {
@@ -465,7 +500,7 @@ const statementLatency = host({
     // Let the subscription settle before submitting.
     await new Promise((r) => setTimeout(r, 1_000));
     submittedAt = performance.now();
-    const r = await trySubmit(ctx, { topics: [topic], channel: await channelOf("limits.latency"), expiry: expiryIn(3600), data: marker });
+    const r = await trySubmit(ctx, { topics: [topic], channel: await channelOf("limits"), data: marker });
     const submitMs = Math.round(performance.now() - submittedAt);
     if (r !== "accepted") return wrong(`Submit ${r}.`);
     const w = await within(ctx.signal, 60_000, "delivery", () => arrived);
@@ -507,7 +542,7 @@ const statementCapacity = host({
   why: "almanac's three runs disagreed (two, four, then 'added one without pushing others out'), and its sharing design rests on the answer. This submits 12 statements of 400 bytes on separate channels, then counts how many are still delivered — separating 'refused' from 'accepted but evicted another'.",
   tier: TIER.SPEND,
   optIn: "spends-quota",
-  cost: "Submits up to 12 statements of 400 bytes, each held for about an hour, which may push this product's other statements out.",
+  cost: "Submits up to 12 statements of 400 bytes with no expiry, on 12 fixed channels. Whatever the account keeps stays held, and may push this product's other statements out.",
   needs: ["host.statement.submit"],
   timeoutMs: 600_000,
   async run(ctx) {
@@ -521,7 +556,9 @@ const statementCapacity = host({
       const data = new Uint8Array(400);
       data.set(random(400));
       data[0] = i; // which submission this is, read back below
-      const r = await trySubmit(ctx, { topics: [topic], channel: await channelOf(`limits.capacity.${i}`), expiry: expiryIn(3600 + i), data: toHex(data) });
+      // No expiry: while the account holds no-expiry statements, a finite one is refused.
+      // Channels are fixed per index, so re-running replaces rather than adds.
+      const r = await trySubmit(ctx, { topics: [topic], channel: await channelOf(`limits.capacity.${i}`), data: toHex(data) });
       rows.push(pad(`#${i + 1}`, r));
       if (r === "accepted") accepted++;
       else if (!firstRefusal) firstRefusal = `#${i + 1}: ${r}`;

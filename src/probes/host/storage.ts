@@ -265,10 +265,13 @@ const preimageSubmit = host({
   why: "cloudStorage.upload signs with an account that holds no Bulletin authorization. The host's preimage manager signs with the slot account the allowance funds. This is the storage path a Product can actually use; the lookup afterwards proves the bytes landed.",
   tier: TIER.SPEND,
   cost: "Stores ~64 bytes on Bulletin from this Product's allowance (one of ~10 transactions a claim). Publicly readable by hash for ~2 weeks.",
-  needs: ["host.cloud.allowance"],
+  needs: ["host.system.handshake"],
   timeoutMs: 180_000,
   async run(ctx) {
     const log: string[] = [];
+    // Asked here rather than through `needs`: host.cloud.allowance is a gesture probe and runs
+    // after every unattended one, so a `needs` on it always read "has not run yet" (2026-09-19).
+    await requestResourceAllocation([{ tag: "BulletinAllowance", value: undefined } as never]).catch(() => {});
     const permission = await requestPermission({ tag: "PreimageSubmit", value: undefined });
     if (!permission.ok) return wrong(`PreimageSubmit permission errored: ${formatHostError(permission.error)}`);
     if (!permission.value) return { status: "blocked", detail: "PreimageSubmit was declined.", diagnosis: "os-denied" };
@@ -422,7 +425,13 @@ const statementSubmit = host({
     if (!store) return unsupported("getStatementStore() returned null.");
 
     const topic = toHex(crypto.getRandomValues(new Uint8Array(32)));
-    const statement = { topics: [topic], data: toHex(enc.encode(`sonde probe ${Date.now()}`)) };
+    // *Corrected 2026-09-19:* this submitted with no channel, so every run added one more
+    // statement — and with no expiry, which the store keeps as the maximum. They filled the
+    // account, and every statement with a finite expiry was then refused AccountFull. A fixed
+    // channel makes each run replace the last. Still no expiry: while the account holds
+    // no-expiry statements, a finite one would be refused.
+    const channel = toHex(new Uint8Array(await crypto.subtle.digest("SHA-256", enc.encode("sonde:submit"))));
+    const statement = { topics: [topic], channel, data: toHex(enc.encode(`sonde probe ${Date.now()}`)) };
 
     const proof = await createProofAuthorized(statement);
     if (!proof.ok) return wrong(`Could not create a proof to submit: ${formatHostError(proof.error)}`);

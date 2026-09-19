@@ -23,6 +23,7 @@ import { UX_PROBES } from "./web/ux";
 import { IDENTITY_PROBES } from "./web/identity";
 import { CONNECTIVITY_PROBES } from "./web/connectivity";
 import { GRAPHICS_PROBES } from "./web/graphics";
+import { WEB_CRASH_LIMIT_PROBES, WEB_LIMIT_PROBES } from "./web/limits";
 
 import { HOST_PROBES } from "./host";
 
@@ -48,8 +49,11 @@ export function manifest(opts: ManifestOptions = {}): Probe[] {
     ...UX_PROBES,
     ...IDENTITY_PROBES,
     ...CONNECTIVITY_PROBES,
-    // Last: WebGPU lives here and is the likeliest thing to take the page down.
+    ...WEB_LIMIT_PROBES,
+    // WebGPU lives here and is the likeliest thing to take the page down.
     ...GRAPHICS_PROBES,
+    // After it: the opt-in memory probes, which set out to find where allocation fails.
+    ...WEB_CRASH_LIMIT_PROBES,
   ];
 
   if (opts.fixtures) probes.unshift(...FIXTURES);

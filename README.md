@@ -10,7 +10,7 @@ use **Copy record** for the shared matrix at
 disagree is the finding.
 
 Successor to `kite`, which asked nine questions about one delivery flow and found a real bug doing
-it. `sonde` asks **133** questions across two banks, is self-contained enough to hand to a stranger,
+it. `sonde` asks **151** questions across two banks, is self-contained enough to hand to a stranger,
 and produces a report a machine can diff.
 
 ```bash
@@ -27,6 +27,31 @@ npm run verify     # prove the fail-safe contract before trusting any result
 | **B — Polkadot host** | All fifteen `@parity/truapi` namespaces: `account, chain, chat, coinPayment, entropy, localStorage, notifications, payment, permissions, preimage, resourceAllocation, signing, statementStore, system, theme` | ~47 |
 
 The interesting failures live at the seam between the two. Geolocation is exactly that seam.
+
+### Limits (added 2026-09-19)
+
+Eighteen probes ask *how far* rather than *whether*. Each puts what it found in the result's
+`measures`, which the **Copy record** output carries into
+[polkadot-host-capabilities](https://github.com/Baronvonbonbon/polkadot-host-capabilities), so a
+limit can be followed from one app build to the next.
+
+| Probe | Measures |
+|---|---|
+| `host.limits.bridgePayload` | largest message a host call carries, and whether going over rejects or hangs |
+| `host.limits.concurrency` | 10, 50 and 200 host calls at once |
+| `host.limits.retention` | which earlier uploads Bulletin still returns, and their age |
+| `host.limits.notifications` | longest text, how many can be scheduled, a year ahead |
+| `host.limits.statementSize` / `statementLatency` | the exact size limit; time from submit to delivery |
+| `web.limits.webrtcLoopback` | whether a data channel opens, its throughput, and the non-trickle offer's size |
+| `web.media.barcodeDetector` | native QR decoding |
+| `web.limits.clipboardSize` | 100 KB, 1 MB and 5 MB of copied text |
+| *opt-in, slow:* `host.limits.localStorageCeiling`, `web.limits.groth16`, `web.limits.backgrounding` | host storage up to 64 MiB a record; a real Groth16 proof; timers, WebSocket and subscription after 30 s in the background |
+| *opt-in, spends quota:* `host.limits.preimageSize`, `bulletinQuota`, `statementExpiry`, `statementCapacity` | largest upload; what happens when the Bulletin claim runs out; longest expiry; statements per account |
+| *opt-in, crash risk:* `web.limits.wasmMemory`, `web.limits.memoryCeiling` | how far memory grows before allocation fails |
+
+Opt-in probes are left out of **Run all** unless the opt-in box is ticked, and each can still be run
+from its own card. The quota ones use up `sondeprobes.dot`'s own allowance, which can leave it
+unable to store for up to two weeks.
 
 ## The point: one probe, three surfaces
 

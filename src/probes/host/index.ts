@@ -16,6 +16,7 @@ import { PERMISSION_PROBES } from "./permissions";
 import { ACCOUNT_PROBES } from "./account";
 import { SERVICE_PROBES } from "./services";
 import { CLOUD_PROBES } from "./storage";
+import { LIMIT_PROBES, RETENTION_PROBES } from "./limits";
 
 export const HOST_PROBES: Probe[] = [
   // system first: container detection and the handshake gate everything else.
@@ -23,8 +24,12 @@ export const HOST_PROBES: Probe[] = [
   // Read-only namespace coverage, cheapest first.
   ...SERVICE_PROBES,
   ...ACCOUNT_PROBES,
+  // Retention reads earlier runs' uploads before this run adds any.
+  ...RETENTION_PROBES,
   // Storage, ending in the two T3 writes.
   ...CLOUD_PROBES,
+  // Limits: how far each host service goes. The quota-exhausting ones are opt-in.
+  ...LIMIT_PROBES,
   // Permissions last of the host bank: every one of these raises a prompt, and
   // several leave grants behind that would change how the probes above behave.
   ...PERMISSION_PROBES,

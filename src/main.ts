@@ -3,6 +3,7 @@ import { captureFingerprint } from "./core/fingerprint";
 import { Journal } from "./core/journal";
 import { Shell } from "./ui/shell";
 import { manifest } from "./probes/manifest";
+import type { OptIn } from "./core/types";
 import { SUITE_VERSION } from "../product.mjs";
 
 declare const __BUILD_ID__: string;
@@ -32,7 +33,9 @@ async function boot() {
   // raise a prompt, let alone spend anything.
   if (params.get("autorun") === "1") {
     document.title = "SONDE-RUNNING";
-    const report = await shell.autorun(Number(params.get("tier") ?? "1"));
+    // &optin=slow,crash-risk — opt-in kinds to include; none by default.
+    const optIn = (params.get("optin") ?? "").split(",").filter(Boolean) as OptIn[];
+    const report = await shell.autorun(Number(params.get("tier") ?? "1"), optIn);
     // ?post=<path> hands the report to the dev server's sink. Dev only — in a
     // published bundle this endpoint does not exist and the fetch simply fails,
     // leaving the on-page report as the only output, which is correct.

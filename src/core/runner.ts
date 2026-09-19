@@ -21,6 +21,7 @@ import {
   TimeoutError,
   UnsupportedError,
   type Ctx,
+  type OptIn,
   type Outcome,
   type PermissionSample,
   type Probe,
@@ -47,6 +48,8 @@ export interface RunOptions {
   maxTier?: number;
   /** Restrict to these ids. Empty means everything. */
   only?: string[];
+  /** Include probes marked optIn: all of them (true), or only these kinds. */
+  includeOptIn?: boolean | OptIn[];
 }
 
 export class Runner {
@@ -91,9 +94,17 @@ export class Runner {
     this.maxTier = opts.maxTier ?? TIER.PROMPT;
     this.abortAll = new AbortController();
 
-    const selected = opts.only?.length
+    const chosen = opts.only?.length
       ? this.probes.filter((p) => opts.only!.includes(p.id))
       : this.probes;
+    // Opt-in probes are recorded as skipped with the reason, never silently dropped:
+    // a missing row reads as "fine" in a matrix.
+    const selected = chosen.filter((p) => {
+      const included = opts.includeOptIn === true || (Array.isArray(opts.includeOptIn) && !!p.optIn && opts.includeOptIn.includes(p.optIn));
+      if (!p.optIn || included || opts.only?.includes(p.id)) return true;
+      this.record(p, { status: "skip", detail: `Opt-in (${p.optIn}) — not selected for this run. Run it from its card, or tick the opt-in box.` });
+      return false;
+    });
 
     const unattended = selected.filter((p) => !p.gesture);
     this.gestureQueue = selected.filter((p) => p.gesture);

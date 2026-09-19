@@ -55,6 +55,7 @@ function resultOf(row: ResultRow) {
     diagnosis: row.diagnosis ?? null,
     ms: row.ms ?? null,
     detail: redact(detail),
+    ...(row.measures && Object.keys(row.measures).length ? { measures: row.measures } : {}),
     ...(needsAttention && row.data ? { evidence: redact(PICKED_FILE.has(row.id) ? "" : row.data) } : {}),
   };
 }

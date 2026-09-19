@@ -4,7 +4,7 @@
 // hurry, possibly outdoors, and possibly by someone who did not write it and
 // only wants to know what broke.
 
-import { TIER, type Outcome, type Probe, type Status } from "../core/types";
+import { TIER, type OptIn, type Outcome, type Probe, type Status } from "../core/types";
 import { Runner, summarise } from "../core/runner";
 import type { Journal } from "../core/journal";
 import type { Fingerprint } from "../core/fingerprint";
@@ -102,7 +102,7 @@ export class Shell {
       <div class="tallies" data-tallies></div>
       <div class="fp">${esc(fingerprintSummary(f))}
 ${esc(f.browser.userAgent)}
-app version : NOT EXPOSED by any host API — Chromium ${esc(f.browser.chromium ?? "?")} is the proxy
+app version : NOT EXPOSED by any host API (Chromium ${esc(f.browser.chromium ?? "?")} is the system WebView, not the app)
 truapi      : ${f.host.truapi} (codec ${f.host.truapiCodec})
 secure ctx  : ${f.context.isSecureContext} · cross-origin isolated ${f.context.crossOriginIsolated}</div>`;
     this.root.appendChild(head);
@@ -152,7 +152,7 @@ secure ctx  : ${f.context.isSecureContext} · cross-origin isolated ${f.context.
       abort.disabled = false;
       this.reportBox.innerHTML = "";
       try {
-        await this.runner.runAll({ maxTier: this.maxTier });
+        await this.runner.runAll({ maxTier: this.maxTier, includeOptIn: optIn.checked });
       } finally {
         runAll.disabled = false;
         abort.disabled = true;
@@ -168,7 +168,17 @@ secure ctx  : ${f.context.isSecureContext} · cross-origin isolated ${f.context.
 
     const report = button("Report", "", () => this.renderReport());
 
-    this.controls.append(runAll, abort, report);
+    // Probes that exhaust quota, risk the WebView, or need the operator mid-run stay
+    // out of "Run all" unless this is ticked. Each still has its own card button.
+    const optInIds = this.probes.filter((p) => p.optIn).map((p) => `${p.title} (${p.optIn})`);
+    const optLabel = document.createElement("label");
+    optLabel.className = "optin";
+    optLabel.title = optInIds.join("\n");
+    const optIn = document.createElement("input");
+    optIn.type = "checkbox";
+    optLabel.append(optIn, ` Include ${optInIds.length} opt-in limit probes (quota, crash risk, slow)`);
+
+    this.controls.append(runAll, abort, report, optLabel);
     this.root.appendChild(this.controls);
   }
 
@@ -370,9 +380,9 @@ secure ctx  : ${f.context.isSecureContext} · cross-origin isolated ${f.context.
    * transient activation cannot be synthesised — so this only ever produces the
    * unattended half, which is exactly what a CI baseline should be.
    */
-  async autorun(maxTier: number): Promise<Report> {
+  async autorun(maxTier: number, includeOptIn: OptIn[] = []): Promise<Report> {
     this.maxTier = maxTier;
-    await this.runner.runAll({ maxTier });
+    await this.runner.runAll({ maxTier, includeOptIn });
     this.runner.skipAllGestures();
     const report = this.currentReport();
     const pre = document.createElement("pre");

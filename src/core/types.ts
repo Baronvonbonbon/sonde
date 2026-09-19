@@ -105,7 +105,25 @@ export interface Outcome {
    * landed — so the hash has to survive the timeout to be verifiable by hand.
    */
   txHash?: string;
+  /**
+   * Named limits the probe measured — bytes accepted, milliseconds taken, counts.
+   * Values only; the probe's `why` says what each name means. Carried into the
+   * report and the shared run record so a limit can be tracked across app builds.
+   */
+  measures?: Record<string, number | string | boolean>;
 }
+
+/**
+ * Why a probe is left out of "Run all" unless the operator opts in. Each can still
+ * be run from its own card.
+ */
+export type OptIn =
+  /** Deliberately uses up this product's Bulletin or statement quota. */
+  | "spends-quota"
+  /** Pushes toward a limit that may take the WebView down. */
+  | "crash-risk"
+  /** Takes minutes, or needs the operator to do something mid-run. */
+  | "slow";
 
 export interface Probe {
   /** Dotted and stable: "web.sensors.geolocation". The diff CLI joins on this. */
@@ -140,6 +158,8 @@ export interface Probe {
   repro?: string;
   /** Exactly what this will spend or write, in one sentence. Required at T3. */
   cost?: string;
+  /** Left out of "Run all" unless opted in. See OptIn. */
+  optIn?: OptIn;
   run(ctx: Ctx): Promise<Outcome>;
 }
 

@@ -18,6 +18,7 @@ import {
 import type { App } from "@parity/product-sdk";
 import { TIER, type Probe } from "../../core/types";
 import { canary, kb, lines, ok, pad, probe, unsupported, wrong } from "../helpers";
+import { rememberUpload } from "./uploads";
 
 const CAT = "host-cloud";
 const host = (p: Omit<Probe, "bank" | "category">): Probe => probe({ ...p, bank: "host", category: CAT });
@@ -278,6 +279,8 @@ const preimageSubmit = host({
     const bytes = crypto.getRandomValues(new Uint8Array(64));
     const [key, putMs] = await ctx.timed(() => manager.submit(bytes));
     log.push(pad("submit", `${putMs} ms → ${String(key).slice(0, 18)}…`));
+    // host.limits.retention looks this up again on later runs.
+    await rememberUpload({ key: String(key), bytes: bytes.length, at: new Date().toISOString(), via: "host.preimage.submit" }).catch(() => {});
 
     const back = await new Promise<{ bytes: Uint8Array | null; ms: number }>((resolve) => {
       const t0 = performance.now();

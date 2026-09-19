@@ -29,6 +29,7 @@ export interface ResultRow {
   permissions?: { before: Record<string, string>; after: Record<string, string> };
   leaked?: string[];
   txHash?: string;
+  measures?: Record<string, number | string | boolean>;
   /** Carried from the Probe so the issue formatter works off the report alone. */
   repro?: string;
   /** Carried so a reader knows what the probe was for without the source. */
@@ -87,6 +88,7 @@ export function buildReport(args: {
       permissions: outcome?.permissions as ResultRow["permissions"],
       leaked: outcome?.leaked,
       txHash: outcome?.txHash,
+      measures: outcome?.measures,
       repro: probe.repro,
       why: probe.why,
     });
@@ -195,6 +197,9 @@ export function toMarkdown(r: Report): string {
         `${row.diagnosis ? ` · \`${row.diagnosis}\`` : ""}`,
     );
     lines.push(`  ${row.detail}`);
+    if (row.measures && Object.keys(row.measures).length) {
+      lines.push(`  measures: ${Object.entries(row.measures).map(([k, v]) => `\`${k}=${v}\``).join(" ")}`);
+    }
   }
 
   lines.push("", "## Caveats", "");

@@ -12,7 +12,7 @@
 // virtual-time budget cannot work here.
 //
 // Usage:
-//   node tools/run-headless.mjs [out.json] [--tier 1] [--timeout 300]
+//   node tools/run-headless.mjs [out.json] [--tier 1] [--timeout 300] [--optin slow,crash-risk]
 
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync, rmSync } from "node:fs";
@@ -28,7 +28,8 @@ const timeoutS = Number(flag("--timeout", "300"));
 
 const CHROME = process.env.CHROME ?? "google-chrome";
 const PORT = process.env.PORT ?? "5179";
-const URL = `http://localhost:${PORT}/?autorun=1&tier=${tier}&post=${encodeURIComponent(outPath)}`;
+const optin = flag("--optin", "");
+const URL = `http://localhost:${PORT}/?autorun=1&tier=${tier}&optin=${encodeURIComponent(optin)}&post=${encodeURIComponent(outPath)}`;
 
 // A stale file would be mistaken for this run's output.
 if (existsSync(outPath)) rmSync(outPath);

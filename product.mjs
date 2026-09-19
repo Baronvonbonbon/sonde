@@ -57,6 +57,10 @@ export const SPEND_ALLOWED_GENESIS = [
   "0x8cfe6717dc4becfda2e13c488a1e2061ff2dfee96e7d031157f72d36716c0a22", // Paseo Bulletin Next
   "0x4a2b5b737de1da59e209b0000a876ec2fa20035dc34fd292a848da32d255ad48", // Paseo People Next
   "0x4349b00e54897e21196fd331015fc5be0f14e118beb0375ed2bb1793737bb57a", // Paseo Asset Hub Next
+  // Paseo Asset Hub, the public testnet. Added 2026-09-19: it is the only chain
+  // the devnet host returned a spec for, so it is what host.chain.genesis
+  // resolves, and without it every T3 probe was refused. Testnet; no real value.
+  "0xd6eec26135305a8ad257a20d003357284c8aa03d0bdb2b357ab0a22371e11ef2", // Paseo Asset Hub
 ];
 
 // Mainnet genesis hashes, listed explicitly so the refusal message can name the

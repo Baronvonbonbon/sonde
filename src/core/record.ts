@@ -42,7 +42,8 @@ function osOf(report: Report): { label: string; slug: string } {
 export function recordKey(report: Report): string {
   const host = report.fingerprint.host;
   const hostPkg = host.sdk["@parity/product-sdk-host"] ?? "unknown";
-  return `${report.startedAt.slice(0, 10)}_codec${host.truapiCodec}_host-${hostPkg}_${osOf(report).slug}`;
+  const hhmm = report.startedAt.slice(11, 13) + report.startedAt.slice(14, 16);
+  return `${report.startedAt.slice(0, 10)}_codec${host.truapiCodec}_host-${hostPkg}_${osOf(report).slug}_${hhmm}`;
 }
 
 function resultOf(row: ResultRow) {

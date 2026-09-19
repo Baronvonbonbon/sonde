@@ -288,7 +288,7 @@ async function main() {
   check("the run record carries the shared schema id", record.schema === RECORD_SCHEMA);
   check(
     "the run record key names date, codec, host SDK and OS",
-    /^\d{4}-\d{2}-\d{2}_codec\d+_host-[^_]+_[a-z]+-\w+$/.test(recordKey(report)),
+    /^\d{4}-\d{2}-\d{2}_codec\d+_host-[^_]+_[a-z]+-[0-9A-Za-z]+_\d{4}$/.test(recordKey(report)),
     recordKey(report),
   );
   check("the run record has every probe", Object.keys(record.results).length === report.results.length);

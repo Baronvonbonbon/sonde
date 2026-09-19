@@ -143,6 +143,8 @@ const chainSpec = chain({
     ];
 
     const rows: string[] = [];
+    const answered: string[] = [];
+    const quiet: string[] = [];
     let silent = 0;
     for (const [name, genesis] of candidates) {
       // Each call gets its own deadline, so one chain the host never answers for is named
@@ -150,6 +152,7 @@ const chainSpec = chain({
       const w = await within(ctx.signal, 6_000, name, () => getChainSpec(genesis as `0x${string}`));
       if (!w.ok) {
         rows.push(pad(name, `no answer in ${w.ms} ms`));
+        quiet.push(name);
         silent++;
         continue;
       }
@@ -163,6 +166,7 @@ const chainSpec = chain({
         continue;
       }
       rows.push(pad(name, `${r.value.name} · ${r.value.genesisHash.slice(0, 12)}…`));
+      answered.push(name);
       ctx.shared.genesis ??= r.value.genesisHash;
       if (r.value.properties) {
         rows.push(pad("  properties", JSON.stringify(r.value.properties).slice(0, 120)));
@@ -172,7 +176,9 @@ const chainSpec = chain({
 
     return ctx.shared.genesis
       ? ok(
-          `Resolved a chain spec. Genesis ${ctx.shared.genesis.slice(0, 12)}… is now the reference for the T3 allowlist.`,
+          // Named in the detail, because a passing row carries no data into the report.
+          `Spec from: ${answered.join(", ")}.${quiet.length ? ` No answer: ${quiet.join(", ")}.` : ""} ` +
+            `Genesis ${ctx.shared.genesis.slice(0, 12)}… is the reference for the T3 allowlist.`,
           lines(...rows),
         )
       : {

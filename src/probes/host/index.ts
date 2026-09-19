@@ -17,6 +17,7 @@ import { ACCOUNT_PROBES } from "./account";
 import { SERVICE_PROBES } from "./services";
 import { CLOUD_PROBES } from "./storage";
 import { LIMIT_PROBES, RETENTION_PROBES } from "./limits";
+import { GAS_PROBES } from "./gas";
 
 export const HOST_PROBES: Probe[] = [
   // system first: container detection and the handshake gate everything else.
@@ -28,6 +29,8 @@ export const HOST_PROBES: Probe[] = [
   ...RETENTION_PROBES,
   // Storage, ending in the two T3 writes.
   ...CLOUD_PROBES,
+  // Gas and tap-free signing: what a Product can do on-chain without a relay.
+  ...GAS_PROBES,
   // Limits: how far each host service goes. The quota-exhausting ones are opt-in.
   ...LIMIT_PROBES,
   // Permissions last of the host bank: every one of these raises a prompt, and

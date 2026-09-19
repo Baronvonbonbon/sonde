@@ -10,7 +10,7 @@ use **Copy record** for the shared matrix at
 disagree is the finding.
 
 Successor to `kite`, which asked nine questions about one delivery flow and found a real bug doing
-it. `sonde` asks **151** questions across two banks, is self-contained enough to hand to a stranger,
+it. `sonde` asks **153** questions across two banks, is self-contained enough to hand to a stranger,
 and produces a report a machine can diff.
 
 ```bash

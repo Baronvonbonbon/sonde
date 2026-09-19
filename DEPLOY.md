@@ -4,15 +4,39 @@
 
 | | |
 |---|---|
-| DotNS label | `caniusethis.dot` |
+| DotNS label | `sondeprobes.dot` (since 2026-09-19; `caniusethis.dot` and `sondeprobe.dot` are stranded, see below) |
 | Environment | `devnet` |
-| Gateway | `https://caniusethis.dev-dot.li` |
-| Owner | `0xff54a5a1fdac91bb4f2b4fbf4bfff37cdbea333f` |
+| Gateway | `https://sondeprobes.dev-dot.li` |
+| Owner | the deploy key, `0xa6d98c2e9eaa9d5bde71cb8763d54011e3a356f6` (`5DAXE4qV…NxAm`) |
 
 `kite` used a random 32-character label so that testing a platform's limits did not announce who was
 testing them. `sonde` deliberately does the opposite: this suite is only useful if strangers run it
 on their own devices and compare reports, and an unmemorable name is one nobody passes on. The
 anonymity was traded for citability, knowingly.
+
+## 2026-09-19 — `sondeprobes.dot`, the first run on it, and three probe bugs
+
+Registered to the deploy key and published with `npm run deploy -- sondeprobes --register` (build
+`2026-09-19T01:54:45.878Z`; CID and transactions not recorded here — add them from the deploy
+output). On codec 1 the handshake passed in 36 ms and 81 probes passed.
+
+Reading the probes behind that run's headline failures found three that measured sonde, not the host:
+
+- **`host.chain.genesis` timed out** because its first candidate, labelled Paseo Asset Hub, was a
+  hash that exists on no chain — it shared seven hex digits with the real one. The host never
+  answered for it, the probe ran out its 45 s, and with no genesis every T3 probe was refused. Now:
+  the devnet "Next" chains and Paseo Asset Hub, each hash read off the chain's own RPC, each call
+  with its own 6 s deadline.
+- **`host.cloud.read` failed** because `KNOWN_CID` was a SHA-256 CID, which the host's lookup never
+  finds (almanac P7). Now: almanac's BLAKE2b-256 fixture, which expires around 2026-09-28.
+- **`navigateTo` reloaded the page**, because it navigated to `location.href`. That is the host
+  doing as asked. Now it opens `SOURCE_URL`.
+
+`SPEND_ALLOWED_GENESIS` now holds the three devnet chains, so T3 can run on them for the first time.
+The run is the first record in
+[polkadot-host-capabilities](https://github.com/Baronvonbonbon/polkadot-host-capabilities), with
+those three results marked retracted. The report view gained **Copy record**, which emits that
+repository's run format (`src/core/record.ts`).
 
 ## 2026-09-18 — moving off `caniusethis.dot`
 

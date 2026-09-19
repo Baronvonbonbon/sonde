@@ -11,6 +11,7 @@ import type { Fingerprint } from "../core/fingerprint";
 import { fingerprintSummary } from "../core/fingerprint";
 import { SURFACE_LABEL } from "../core/surface";
 import { buildReport, toGitHubIssue, toMarkdown, type Report, type ResultRow } from "../core/report";
+import { toRecordJson } from "../core/record";
 
 const STATUSES: Status[] = ["pass", "fail", "timeout", "crashed", "blocked", "unsupported", "skip"];
 
@@ -400,6 +401,7 @@ secure ctx  : ${f.context.isSecureContext} · cross-origin isolated ${f.context.
     box.innerHTML = `<h3 style="margin-top:0">Report</h3>
       <div class="controls">
         <button class="small" data-copy>Copy markdown</button>
+        <button class="small" data-record title="A run record for github.com/Baronvonbonbon/polkadot-host-capabilities — addresses and file names removed">Copy record</button>
         <button class="small" data-json>Download JSON</button>
         <button class="small" data-issue>GitHub issue…</button>
       </div>
@@ -418,6 +420,22 @@ secure ctx  : ${f.context.isSecureContext} · cross-origin isolated ${f.context.
         b.textContent = "Blocked — select the text below";
       }
       setTimeout(() => (b.textContent = "Copy markdown"), 2500);
+    });
+
+    // The shared capability matrix's format (src/core/record.ts). On a phone the clipboard is the
+    // only way out — a download does nothing inside the app — so the record is copied, and shown
+    // in place of the markdown if the clipboard refuses.
+    box.querySelector("[data-record]")!.addEventListener("click", async (e) => {
+      const b = e.target as HTMLButtonElement;
+      const record = toRecordJson(report);
+      try {
+        await navigator.clipboard.writeText(record);
+        b.textContent = "Copied ✓";
+      } catch {
+        box.querySelector("[data-md]")!.textContent = record;
+        b.textContent = "Blocked — select the text below";
+      }
+      setTimeout(() => (b.textContent = "Copy record"), 2500);
     });
 
     box.querySelector("[data-json]")!.addEventListener("click", () => {

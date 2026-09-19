@@ -21,7 +21,7 @@
 // apart, the host probes silently exercise an identity that never published
 // anything and report a confident "no".
 
-export const PRODUCT_ID = "caniusethis";
+export const PRODUCT_ID = "sondeprobes";
 export const DOT_NAME = `${PRODUCT_ID}.dot`;
 
 // Must equal the --env passed to `pad`. The SDK defaults cloud storage to
@@ -51,10 +51,12 @@ export const SOURCE_URL = "https://github.com/Baronvonbonbon/sonde";
 // which product.mjs above documents as an easy mistake to make. Any T3 probe
 // resolving a chain outside this set refuses to run, whatever the UI says.
 export const SPEND_ALLOWED_GENESIS = [
-  // Populated at first run by the host.chain.genesis probe on devnet/paseo.
-  // Deliberately EMPTY by default: an empty allowlist denies every T3 probe,
-  // which is the correct behaviour for a fresh checkout. Fill it in only after
-  // reading the genesis hash off a chain you are willing to spend on.
+  // The Products devnet chains, each read off its own RPC (chain_getBlockHash(0))
+  // on 2026-09-19. Spending here costs testnet quota, nothing more. Any other
+  // chain — mainnet, or one this list has never seen — is refused.
+  "0x8cfe6717dc4becfda2e13c488a1e2061ff2dfee96e7d031157f72d36716c0a22", // Paseo Bulletin Next
+  "0x4a2b5b737de1da59e209b0000a876ec2fa20035dc34fd292a848da32d255ad48", // Paseo People Next
+  "0x4349b00e54897e21196fd331015fc5be0f14e118beb0375ed2bb1793737bb57a", // Paseo Asset Hub Next
 ];
 
 // Mainnet genesis hashes, listed explicitly so the refusal message can name the

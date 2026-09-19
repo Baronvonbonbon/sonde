@@ -23,13 +23,22 @@ const host = (p: Omit<Probe, "bank" | "category">): Probe => probe({ ...p, bank:
 const enc = new TextEncoder();
 
 /**
- * A known-good CID published by an earlier probe run.
+ * A known-good CID.
  *
  * Reads are permissionless — no signature, no allowance, no account — which
  * makes this the control that separates "cloud storage is broken" from "the
  * write path is broken". kite's single most useful storage probe.
+ *
+ * *Corrected 2026-09-19:* this was a SHA-256 (bafybei…) CID. The host's lookup
+ * finds BLAKE2b-256 content only (almanac P7), so it could never come back and
+ * the probe reported a broken read. This one is almanac's P7 fixture: 79 bytes,
+ * raw codec, BLAKE2b-256 — the way the SDK itself uploads — stored 2026-09-14
+ * and verified through the devnet gateway on 2026-09-19. Bulletin keeps data
+ * for about two weeks, so a timeout after ~2026-09-28 more likely means it
+ * expired than that reads broke; host.cloud.roundTrip is the fresh control.
  */
-const KNOWN_CID = "bafybeifnjwhgxxnsqw7x6lq2yb6jylfsmwhgr2nfdaemdzjuvybjusrzv4";
+const KNOWN_CID = "bafk2bzacebowgi5ykjhnh26gioxl4c3nwr5yu5rcw67i6mf3ksn7uhfo3q5ys";
+const KNOWN_CID_STORED = "2026-09-14";
 
 const read = host({
   id: "host.cloud.read",
@@ -49,7 +58,11 @@ const read = host({
         status: "fail",
         ms,
         detail: "Read returned an error.",
-        data: lines(pad("cid", KNOWN_CID), pad("error", JSON.stringify(res.error)?.slice(0, 300))),
+        data: lines(
+          pad("cid", KNOWN_CID),
+          pad("stored", `${KNOWN_CID_STORED} (Bulletin keeps ~2 weeks; after that this is expiry, not a broken read)`),
+          pad("error", JSON.stringify(res.error)?.slice(0, 300)),
+        ),
         diagnosis: "threw",
       };
     }

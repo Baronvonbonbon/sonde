@@ -6,7 +6,7 @@ import { getTruApi, isInsideContainer, navigateTo, isChainSupported, formatHostE
 import { TRUAPI_VERSION, TRUAPI_CODEC_VERSION } from "@parity/truapi";
 import { TIER, type Probe } from "../../core/types";
 import { errText, lines, nt, ok, pad, probe, unsupported, wrong } from "../helpers";
-import { CLOUD_ENV, PRODUCT_ID } from "../../../product.mjs";
+import { CLOUD_ENV, PRODUCT_ID, SOURCE_URL } from "../../../product.mjs";
 
 const CAT = "system";
 const host = (p: Omit<Probe, "bank" | "category">): Probe => probe({ ...p, bank: "host", category: CAT });
@@ -194,15 +194,20 @@ export const navigate = host({
   needs: ["host.system.handshake"],
   timeoutMs: 30_000,
   async run() {
-    // Navigates to this suite's own URL. If the host honours it the result is a
-    // no-op; a probe should not send anyone somewhere they did not ask to go.
-    const r = await navigateTo(location.href);
+    // *Corrected 2026-09-19:* this navigated to location.href, "a no-op if honoured". It is not: an
+    // honoured navigation to the product's own URL reloads it, which ended every run that reached
+    // this probe. It now hands the host sonde's source repository, an outside URL, which the host
+    // should open in the system browser (the OpenUrl permission) and leave the product running.
+    const r = await navigateTo(SOURCE_URL);
     return r.ok
-      ? ok("Host accepted the navigation request.", pad("url", location.href) + "\n\nDeliberately self-referential — this is a no-op if honoured.")
+      ? ok(
+          "Host accepted the navigation request.",
+          lines(pad("url", SOURCE_URL), "", "Honoured means the URL opened outside the product and this page kept running."),
+        )
       : {
           status: "blocked",
           detail: `Host refused: ${formatHostError(r.error)}`,
-          data: pad("url", location.href),
+          data: pad("url", SOURCE_URL),
           diagnosis: "os-denied",
         };
   },

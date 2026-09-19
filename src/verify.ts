@@ -13,6 +13,8 @@ import { Journal } from "./core/journal";
 import { FIXTURES } from "./probes/fixtures";
 import { manifest } from "./probes/manifest";
 import { buildReport, toMarkdown, toGitHubIssue } from "./core/report";
+import { recordKey, redact, toRecord, RECORD_SCHEMA } from "./core/record";
+import { MAINNET_GENESIS, SPEND_ALLOWED_GENESIS } from "../product.mjs";
 import { captureFingerprint } from "./core/fingerprint";
 import { TIER, type Outcome, type Probe } from "./core/types";
 
@@ -182,6 +184,10 @@ async function main() {
     `${mn?.status}/${mn?.diagnosis}`,
   );
   check("the mainnet refusal names the chain", !!mn?.detail.includes("Polkadot"), mn?.detail);
+  check(
+    "the spend allowlist holds no mainnet chain",
+    SPEND_ALLOWED_GENESIS.every((g: string) => !(g in MAINNET_GENESIS)),
+  );
   await lockedJournal.clear();
 
   // -- 4. abort -------------------------------------------------------------
@@ -277,6 +283,20 @@ async function main() {
 
   const json = JSON.stringify(report);
   check("the report round-trips through JSON", JSON.parse(json).schema === "sonde-report/1");
+
+  const record = toRecord(report) as { schema: string; key: string; results: Record<string, unknown> };
+  check("the run record carries the shared schema id", record.schema === RECORD_SCHEMA);
+  check(
+    "the run record key names date, codec, host SDK and OS",
+    /^\d{4}-\d{2}-\d{2}_codec\d+_host-[^_]+_[a-z]+-\w+$/.test(recordKey(report)),
+    recordKey(report),
+  );
+  check("the run record has every probe", Object.keys(record.results).length === report.results.length);
+  check(
+    "the run record redacts addresses but keeps chain hashes",
+    redact("5DAXE4qVcgAnpqEdAxNNj68Kmj5aNrGGVaujRVD9YqqmNxAm 0xa6d98c2e9eaa9d5bde71cb8763d54011e3a356f6 0x91b171bb158e2d3848fa23a9f1c25182fb8e20313b2c1eb49219da7a70ce90c3") ===
+      "<ss58 address> <h160 address> 0x91b171bb158e2d3848fa23a9f1c25182fb8e20313b2c1eb49219da7a70ce90c3",
+  );
 
   // Stash a fixture report pair for the diff CLI to chew on.
   (window as unknown as { __sondeReport: unknown }).__sondeReport = report;

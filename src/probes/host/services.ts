@@ -18,7 +18,7 @@ import {
   toHex,
 } from "@parity/product-sdk-host";
 import { TIER, type Probe } from "../../core/types";
-import { lines, ok, pad, probe, unsupported, wrong } from "../helpers";
+import { lines, ok, pad, probe, unsupported, within, wrong } from "../helpers";
 
 const host = (cat: string) => (p: Omit<Probe, "bank" | "category">): Probe =>
   probe({ ...p, bank: "host", category: cat });
@@ -129,15 +129,31 @@ const chainSpec = chain({
   needs: ["host.system.handshake"],
   timeoutMs: 45_000,
   async run(ctx) {
-    // Devnet and paseo Asset Hub, the two a Products build is likely to carry.
+    // Read off each chain's own RPC (chain_getBlockHash(0)) on 2026-09-19. The devnet host carries
+    // the "Next" chains; the others are asked so the report says whether it carries them too.
+    // *Corrected 2026-09-19:* the first entry here was a made-up hash that shared only its first
+    // seven hex digits with Paseo Asset Hub's. The host never answered for it, so the whole probe
+    // timed out and every T3 probe was skipped — a probe bug, reported as a host one.
     const candidates: [string, string][] = [
-      ["Paseo Asset Hub", "0xd6eec26d5b1e9e4a9c5a1f2a9d3f6c1b2e8a4f7c3b9d5e1a7c4f8b2d6e0a3c9f"],
+      ["Paseo Bulletin Next", "0x8cfe6717dc4becfda2e13c488a1e2061ff2dfee96e7d031157f72d36716c0a22"],
+      ["Paseo People Next", "0x4a2b5b737de1da59e209b0000a876ec2fa20035dc34fd292a848da32d255ad48"],
+      ["Paseo Asset Hub Next", "0x4349b00e54897e21196fd331015fc5be0f14e118beb0375ed2bb1793737bb57a"],
+      ["Paseo Asset Hub", "0xd6eec26135305a8ad257a20d003357284c8aa03d0bdb2b357ab0a22371e11ef2"],
       ["Polkadot Asset Hub", "0x68d56f15f85d3136970ec16946040bc1752654e906147f7e43e9d539d7c3de2f"],
     ];
 
     const rows: string[] = [];
+    let silent = 0;
     for (const [name, genesis] of candidates) {
-      const r = await getChainSpec(genesis as `0x${string}`);
+      // Each call gets its own deadline, so one chain the host never answers for is named
+      // rather than hiding the others.
+      const w = await within(ctx.signal, 6_000, name, () => getChainSpec(genesis as `0x${string}`));
+      if (!w.ok) {
+        rows.push(pad(name, `no answer in ${w.ms} ms`));
+        silent++;
+        continue;
+      }
+      const r = w.value;
       if (!r.ok) {
         rows.push(pad(name, `error — ${formatHostError(r.error)}`));
         continue;
@@ -147,13 +163,12 @@ const chainSpec = chain({
         continue;
       }
       rows.push(pad(name, `${r.value.name} · ${r.value.genesisHash.slice(0, 12)}…`));
-      // First one that resolves becomes the T3 reference. The allowlist check
-      // in the runner is what decides whether spending is permitted on it.
       ctx.shared.genesis ??= r.value.genesisHash;
       if (r.value.properties) {
         rows.push(pad("  properties", JSON.stringify(r.value.properties).slice(0, 120)));
       }
     }
+    if (silent) rows.push("", `${silent} chain(s) never answered: the host neither returned a spec nor said it lacks one.`);
 
     return ctx.shared.genesis
       ? ok(

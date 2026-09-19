@@ -14,6 +14,7 @@ import {
   getPreimageManager,
   getChainSpec,
   getHostProvider,
+  isChainSupported,
   formatHostError,
   toHex,
 } from "@parity/product-sdk-host";
@@ -173,6 +174,31 @@ const chainSpec = chain({
       }
     }
     if (silent) rows.push("", `${silent} chain(s) never answered: the host neither returned a spec nor said it lacks one.`);
+
+    // getChainSpec is unreliable: across five runs on 2026-09-19 it answered for Paseo Asset Hub
+    // four times and for nothing once. isChainSupported answers in ~30 ms every time, so when no
+    // spec comes back, the chain is identified by asking which candidates the host carries. The
+    // T3 allowlist then applies to that answer exactly as it would to a spec.
+    const supported: string[] = [];
+    if (!ctx.shared.genesis) {
+      rows.push("", "No spec resolved — asking isChainSupported instead:");
+      for (const [name, genesis] of candidates) {
+        const w = await within(ctx.signal, 4_000, name, () => isChainSupported(genesis as `0x${string}`));
+        const said = !w.ok ? "no answer" : w.value.ok ? (w.value.value ? "supported" : "not supported") : `error — ${formatHostError(w.value.error)}`;
+        rows.push(pad(`  ${name}`, said));
+        if (said === "supported") {
+          supported.push(name);
+          ctx.shared.genesis ??= genesis;
+        }
+      }
+      if (ctx.shared.genesis) {
+        return ok(
+          `No chain spec came back (silent for ${quiet.join(", ") || "every chain"}), but the host says it carries ${supported.join(", ")}. ` +
+            `Genesis ${ctx.shared.genesis.slice(0, 12)}… is the reference for the T3 allowlist.`,
+          lines(...rows),
+        );
+      }
+    }
 
     return ctx.shared.genesis
       ? ok(

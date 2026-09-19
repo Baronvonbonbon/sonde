@@ -1,10 +1,13 @@
 # sonde
 
-**[caniusethis.dot](https://caniusethis.dev-dot.li)** — a capability suite for the Polkadot App
+**[sondeprobes.dot](https://sondeprobes.dev-dot.li)** — a capability suite for the Polkadot App
 runtime. Sent into a runtime to report what is there.
 
-Open it on your own phone, tap **Run all**, and download the JSON. Then diff your report against
-someone else's and the disagreement is the finding.
+Open it on your own phone, tap **Run all**, and copy the report. Inside the app nothing downloads, so
+use **Copy record** for the shared matrix at
+[polkadot-host-capabilities](https://github.com/Baronvonbonbon/polkadot-host-capabilities), or
+**Copy markdown** for a readable report. Then compare your report with someone else's: where they
+disagree is the finding.
 
 Successor to `kite`, which asked nine questions about one delivery flow and found a real bug doing
 it. `sonde` asks **132** questions across two banks, is self-contained enough to hand to a stranger,

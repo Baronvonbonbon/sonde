@@ -89,7 +89,10 @@ const smartContractAllowance = host({
     CHAINS.forEach(([name], i) => rows.push(pad(`before · ${name}`, show(before[i]))));
 
     const t0 = performance.now();
-    const r = await requestResourceAllocation([{ tag: "SmartContractAllowance", value: GAS_INDEX } as never]).catch(
+    const r = await requestResourceAllocation([
+      // DerivationIndex is itself a tagged union ({ Index: u32 } | { Raw: 32 bytes }); a bare number fails in the SDK encoder.
+      { tag: "SmartContractAllowance", value: { tag: "Index", value: GAS_INDEX } } as never,
+    ]).catch(
       (e) => ({ ok: false as const, error: e }),
     );
     const askMs = Math.round(performance.now() - t0);

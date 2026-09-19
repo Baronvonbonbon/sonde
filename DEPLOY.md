@@ -14,6 +14,12 @@ testing them. `sonde` deliberately does the opposite: this suite is only useful 
 on their own devices and compare reports, and an unmemorable name is one nobody passes on. The
 anonymity was traded for citability, knowingly.
 
+## 2026-09-19 (evening, later) — first-transaction gas probe
+
+Published from `dbc5bde`: build `2026-09-19T16:38:28.919Z`, CID
+`bafybeiduhho6vowwcu4weqyhkpnruawu3iuxdyrqw54axwl3c66xaylpc4`. The `bdce5d1` publish in between (the
+allowance fix) was interrupted before it was recorded; it did go live.
+
 ## 2026-09-19 (evening) — gas allowance and AutoSigning probes
 
 Published from `c96c5f7`: build `2026-09-19T15:15:07.404Z`, CID

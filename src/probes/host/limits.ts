@@ -135,22 +135,36 @@ const concurrency = host({
 const localStorageCeiling = host({
   id: "host.limits.localStorageCeiling",
   title: "Host local storage — largest record",
-  why: "almanac measured 4 MiB in one record. This doubles until a write or read-back fails, so a Product knows how much it can keep on the device without Bulletin.",
+  why: "almanac measured 4 MiB in one record. This steps up from 5 MiB until a write or read-back fails. On 2026-09-19 an 8 MiB write took the whole page down, so each size is noted before it is tried: a re-run reports the size that killed the last attempt and stops short of it.",
   tier: TIER.INVOKE,
-  optIn: "slow",
+  optIn: "crash-risk",
+  crashRisk: "high",
   needs: ["host.localStorage.roundTrip"],
   timeoutMs: 600_000,
   async run(ctx) {
     const store = await getHostLocalStorage();
     if (!store) return unsupported("getHostLocalStorage() returned null.");
     const key = "sonde.limits.ceiling";
+    // In web localStorage, not host storage: it has to survive the page dying mid-write.
+    const MARK = "sonde.limits.ceiling.trying";
+    const killedAt = Number(safeGet(MARK) ?? 0);
     ctx.cleanup.add("host-ls-ceiling", () => store.clear(key).catch(() => {}));
     const rows: string[] = [];
+    if (killedAt) rows.push(pad("last attempt", `the page died writing ${sizeOf(killedAt)} — stopping below it`));
     let largest = 0;
-    let beyond = "none up to 64 MiB";
-    for (const n of [8 * MiB, 16 * MiB, 32 * MiB, 64 * MiB]) {
+    let beyond = killedAt ? `page died at ${sizeOf(killedAt)} (earlier run)` : "none up to 8 MiB";
+    for (const n of [5 * MiB, 6 * MiB, 7 * MiB, 8 * MiB]) {
+      if (killedAt && n >= killedAt) break;
+      safeSet(MARK, String(n));
       const bytes = random(n);
-      const put = await within(ctx.signal, 120_000, "write", () => store.writeBytes(key, bytes));
+      let put;
+      try {
+        put = await within(ctx.signal, 120_000, "write", () => store.writeBytes(key, bytes));
+      } catch (e) {
+        rows.push(pad(sizeOf(n), `refused — ${errOf(e)}`));
+        beyond = `refused at ${sizeOf(n)}`;
+        break;
+      }
       if (!put.ok) {
         rows.push(pad(sizeOf(n), `write: no answer in ${put.ms} ms`));
         beyond = `write hangs at ${sizeOf(n)}`;
@@ -166,13 +180,31 @@ const localStorageCeiling = host({
       }
       largest = n;
     }
+    // Only a size that finished clears the mark; a crash leaves it for the next run to read.
+    if (!killedAt) safeSet(MARK, "");
     await store.clear(key).catch(() => {});
     const measures = { largestRecordMiB: largest / MiB, beyond };
     return largest
       ? { ...ok(`Largest record written and read back intact: ${sizeOf(largest)}. Beyond: ${beyond}.`, lines(...rows)), measures }
-      : { ...wrong("Even 8 MiB did not round-trip (almanac saw 4 MiB work).", lines(...rows)), measures };
+      : { ...wrong(`No size from 5 MiB up round-tripped. Beyond: ${beyond}.`, lines(...rows)), measures };
   },
 });
+
+function safeGet(k: string): string | null {
+  try {
+    return localStorage.getItem(k) || null;
+  } catch {
+    return null;
+  }
+}
+function safeSet(k: string, v: string): void {
+  try {
+    if (v) localStorage.setItem(k, v);
+    else localStorage.removeItem(k);
+  } catch {
+    /* best effort */
+  }
+}
 
 // -- notifications --------------------------------------------------------------
 

@@ -45,9 +45,9 @@ limit can be followed from one app build to the next.
 | `web.limits.webrtcLoopback` | whether a data channel opens, its throughput, and the non-trickle offer's size |
 | `web.media.barcodeDetector` | native QR decoding |
 | `web.limits.clipboardSize` | 100 KB, 1 MB and 5 MB of copied text |
-| *opt-in, slow:* `host.limits.localStorageCeiling`, `web.limits.groth16`, `web.limits.backgrounding` | host storage up to 64 MiB a record; a real Groth16 proof; timers, WebSocket and subscription after 30 s in the background |
+| *opt-in, slow:* `web.limits.groth16`, `web.limits.backgrounding` | a real Groth16 proof; timers, WebSocket and subscription after 30 s in the background |
 | *opt-in, spends quota:* `host.limits.preimageSize`, `bulletinQuota`, `statementExpiry`, `statementCapacity` | largest upload; what happens when the Bulletin claim runs out; longest expiry; statements per account |
-| *opt-in, crash risk:* `web.limits.wasmMemory`, `web.limits.memoryCeiling` | how far memory grows before allocation fails |
+| *opt-in, crash risk:* `host.limits.localStorageCeiling`, `web.limits.wasmMemory`, `web.limits.memoryCeiling` | the largest host-storage record (an 8 MiB write killed the page on 2026-09-19; a re-run stops below the size that did); how far memory grows before allocation fails |
 
 Opt-in probes are left out of **Run all** unless the opt-in box is ticked, and each can still be run
 from its own card. The quota ones use up `sondeprobes.dot`'s own allowance, which can leave it

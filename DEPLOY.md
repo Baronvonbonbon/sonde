@@ -14,6 +14,12 @@ testing them. `sonde` deliberately does the opposite: this suite is only useful 
 on their own devices and compare reports, and an unmemorable name is one nobody passes on. The
 anonymity was traded for citability, knowingly.
 
+## 2026-09-19 (later) — chain identified by isChainSupported
+
+Published from `89bab46`: build `2026-09-19T14:10:55.287Z`, CID
+`bafybeid5xhg2pj57v3b54gre2uaksrybzbog3bg5yei2vtruunnjmcuadm`, contenthash transaction
+`0x8080fe1de4ea4d5e1e9a28ad1e3a9df68b2e1780f5fef12ddf691344fbd365f7`.
+
 ## 2026-09-19 (afternoon) — limit probes, crash-safe
 
 Published by the deploy key from `5738515`: CID
